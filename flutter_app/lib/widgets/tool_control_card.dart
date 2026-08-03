@@ -5,12 +5,16 @@ import '../models/gas_tool.dart';
 class ToolControlCard extends StatefulWidget {
   const ToolControlCard({
     required this.tool,
+    required this.commandsEnabled,
+    required this.commandsDisabledReason,
     required this.onApply,
     required this.onClose,
     super.key,
   });
 
   final GasTool tool;
+  final bool commandsEnabled;
+  final String commandsDisabledReason;
   final Future<void> Function(double requestedPercent) onApply;
   final Future<void> Function() onClose;
 
@@ -20,6 +24,7 @@ class ToolControlCard extends StatefulWidget {
 
 class _ToolControlCardState extends State<ToolControlCard> {
   late double _draftPercent;
+
   bool _submitting = false;
   bool _dirty = false;
 
@@ -41,12 +46,22 @@ class _ToolControlCardState extends State<ToolControlCard> {
   }
 
   Future<void> _apply() async {
+    if (!widget.commandsEnabled || _submitting) {
+      return;
+    }
+
     setState(() {
       _submitting = true;
     });
 
     try {
       await widget.onApply(_draftPercent);
+
+      if (mounted) {
+        setState(() {
+          _dirty = false;
+        });
+      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -68,6 +83,10 @@ class _ToolControlCardState extends State<ToolControlCard> {
   }
 
   Future<void> _confirmClose() async {
+    if (!widget.commandsEnabled || _submitting) {
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -98,7 +117,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
       },
     );
 
-    if (confirmed != true || !mounted) {
+    if (confirmed != true || !mounted || !widget.commandsEnabled) {
       return;
     }
 
@@ -108,6 +127,13 @@ class _ToolControlCardState extends State<ToolControlCard> {
 
     try {
       await widget.onClose();
+
+      if (mounted) {
+        setState(() {
+          _draftPercent = 0;
+          _dirty = false;
+        });
+      }
     } catch (error) {
       if (!mounted) {
         return;
@@ -133,7 +159,10 @@ class _ToolControlCardState extends State<ToolControlCard> {
     final tool = widget.tool;
 
     final controlsEnabled =
-        tool.connected && tool.fault == null && !_submitting;
+        widget.commandsEnabled &&
+        tool.connected &&
+        tool.fault == null &&
+        !_submitting;
 
     final canApply = controlsEnabled && _dirty;
 
@@ -162,6 +191,30 @@ class _ToolControlCardState extends State<ToolControlCard> {
                 ),
               ],
             ),
+            if (!widget.commandsEnabled) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock, size: 18, color: Colors.redAccent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.commandsDisabledReason,
+                        style: const TextStyle(color: Colors.redAccent),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               'Actual valve position: '
@@ -230,6 +283,16 @@ class _ToolControlCardState extends State<ToolControlCard> {
                 label: const Text('Command Valve Closed'),
               ),
             ),
+            if (!tool.connected) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Tool controller is disconnected.',
+                style: TextStyle(
+                  color: Colors.redAccent,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
             if (tool.fault != null) ...[
               const SizedBox(height: 12),
               Text(

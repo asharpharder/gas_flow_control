@@ -19,4 +19,9 @@ class ToolTelemetry(BaseModel):
     connected: bool
     fault: str | None = None
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class SetValveRequest(BaseModel):
+    requested_valve_percent: float = Field(ge=0, le=100)
+    operator_id: str = Field(min_length=1, max_length=64)
     

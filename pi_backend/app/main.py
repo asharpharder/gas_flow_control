@@ -1,17 +1,20 @@
+import logging
 import os
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from .hardware import SimulatedHardware
-from .models import ToolTelemetry
+from .hardware import SimulatedHardware, ToolNotFoundError
+from .models import SetValveRequest, ToolTelemetry
 
+
+logger = logging.getLogger(__name__)
 
 API_TOKEN = os.getenv("GAS_APP_TOKEN", "local-simulation-token")
 
 app = FastAPI(
     title="Gas Flow Control API",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 app.add_middleware(
@@ -46,4 +49,31 @@ async def get_tools(
 ) -> list[ToolTelemetry]:
     require_token(authorization)
     return await hardware.read_all()
-    
+
+
+@app.post(
+    "/tools/{tool_id}/valve",
+    response_model=ToolTelemetry,
+)
+async def set_valve_position(
+    tool_id: int,
+    request: SetValveRequest,
+    authorization: str | None = Header(default=None),
+) -> ToolTelemetry:
+    require_token(authorization)
+
+    logger.info(
+        "Valve command: operator=%s tool=%s requested_percent=%s",
+        request.operator_id,
+        tool_id,
+        request.requested_valve_percent,
+    )
+
+    try:
+        return await hardware.set_valve_position(
+            tool_id=tool_id,
+            requested_percent=request.requested_valve_percent,
+        )
+    except ToolNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+        

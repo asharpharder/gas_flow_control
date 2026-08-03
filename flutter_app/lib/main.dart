@@ -1,121 +1,265 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+const apiUrl = String.fromEnvironment(
+  'GAS_API_URL',
+  defaultValue: 'http://127.0.0.1:8000',
+);
+
+const apiToken = String.fromEnvironment(
+  'GAS_API_TOKEN',
+  defaultValue: 'local-simulation-token',
+);
 
 void main() {
-  runApp(const MyApp());
+  runApp(const GasControlApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class GasControlApp extends StatelessWidget {
+  const GasControlApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Gas Flow Control',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.orange,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const ToolListScreen(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class GasTool {
+  const GasTool({
+    required this.toolId,
+    required this.name,
+    required this.requestedValvePercent,
+    required this.actualValvePercent,
+    required this.measuredFlowCfh,
+    required this.connected,
+    required this.fault,
+  });
 
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
+  final int toolId;
+  final String name;
+  final double requestedValvePercent;
+  final double actualValvePercent;
+  final double measuredFlowCfh;
+  final bool connected;
+  final String? fault;
 
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  factory GasTool.fromJson(Map<String, dynamic> json) {
+    return GasTool(
+      toolId: json['tool_id'] as int,
+      name: json['name'] as String,
+      requestedValvePercent:
+          (json['requested_valve_percent'] as num).toDouble(),
+      actualValvePercent:
+          (json['actual_valve_percent'] as num).toDouble(),
+      measuredFlowCfh: (json['measured_flow_cfh'] as num).toDouble(),
+      connected: json['connected'] as bool,
+      fault: json['fault'] as String?,
+    );
+  }
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class ToolListScreen extends StatefulWidget {
+  const ToolListScreen({super.key});
 
-  void _incrementCounter() {
+  @override
+  State<ToolListScreen> createState() => _ToolListScreenState();
+}
+
+class _ToolListScreenState extends State<ToolListScreen> {
+  late Future<List<GasTool>> _toolsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _toolsFuture = _fetchTools();
+  }
+
+  Future<List<GasTool>> _fetchTools() async {
+    final response = await http.get(
+      Uri.parse('$apiUrl/tools'),
+      headers: {
+        'Authorization': 'Bearer $apiToken',
+      },
+    ).timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Backend returned ${response.statusCode}: ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as List<dynamic>;
+
+    return decoded
+        .map(
+          (item) => GasTool.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  void _reload() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _toolsFuture = _fetchTools();
     });
+  }
+
+  Future<void> _refresh() async {
+    final nextLoad = _fetchTools();
+
+    setState(() {
+      _toolsFuture = nextLoad;
+    });
+
+    try {
+      await nextLoad;
+    } catch (_) {
+      // FutureBuilder displays the connection error.
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
+        title: const Text('Gas Flow Control'),
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _reload,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+      body: FutureBuilder<List<GasTool>>(
+        future: _toolsFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.cloud_off,
+                      size: 56,
+                      color: Colors.redAccent,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Unable to connect to the controller',
+                      style: TextStyle(fontSize: 20),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    SelectableText(
+                      '${snapshot.error}',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    FilledButton.icon(
+                      onPressed: _reload,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Try Again'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final tools = snapshot.data ?? [];
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: tools.length,
+              itemBuilder: (context, index) {
+                final tool = tools[index];
+
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                tool.name,
+                                style:
+                                    Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                            Icon(
+                              tool.connected
+                                  ? Icons.check_circle
+                                  : Icons.error,
+                              color: tool.connected
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Valve position: '
+                          '${tool.actualValvePercent.toStringAsFixed(1)}%',
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: tool.actualValvePercent / 100,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Requested position: '
+                          '${tool.requestedValvePercent.toStringAsFixed(1)}%',
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Measured flow: '
+                          '${tool.measuredFlowCfh.toStringAsFixed(1)} CFH',
+                        ),
+                        if (tool.fault != null) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Fault: ${tool.fault}',
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+          );
+        },
       ),
     );
   }

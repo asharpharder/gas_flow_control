@@ -55,4 +55,9 @@ class SimulatedHardware:
         tool.updated_at = datetime.now(timezone.utc)
 
         return tool.model_copy(deep=True)
-        
+
+    async def close_valve(self, tool_id: int) -> ToolTelemetry:
+        return await self.set_valve_position(
+            tool_id=tool_id,
+            requested_percent=0,
+        )      

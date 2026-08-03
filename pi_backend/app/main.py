@@ -5,7 +5,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .hardware import SimulatedHardware, ToolNotFoundError
-from .models import SetValveRequest, ToolTelemetry
+from .models import CloseValveRequest, SetValveRequest, ToolTelemetry
 
 
 logger = logging.getLogger(__name__)
@@ -75,5 +75,27 @@ async def set_valve_position(
             requested_percent=request.requested_valve_percent,
         )
     except ToolNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+@app.post(
+    "/tools/{tool_id}/close",
+    response_model=ToolTelemetry,
+)
+async def close_valve(
+    tool_id: int,
+    request: CloseValveRequest,
+    authorization: str | None = Header(default=None),
+) -> ToolTelemetry:
+    require_token(authorization)
+
+    logger.info(
+        "Close command: operator=%s tool=%s",
+        request.operator_id,
+        tool_id,
+    )
+
+    try:
+        return await hardware.close_valve(tool_id)
+    except ToolNotFoundError as error: 
         raise HTTPException(status_code=404, detail=str(error)) from error
         

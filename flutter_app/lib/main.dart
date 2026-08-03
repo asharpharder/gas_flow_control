@@ -84,6 +84,7 @@ class ToolListScreen extends StatefulWidget {
 
 class _ToolListScreenState extends State<ToolListScreen> {
   late Future<List<GasTool>> _toolsFuture;
+  bool _closingAll = false;
 
   @override
   void initState() {
@@ -131,7 +132,8 @@ class _ToolListScreenState extends State<ToolListScreen> {
 
     if (response.statusCode != 200) {
       throw Exception(
-        'Command failed with ${response.statusCode}: ${response.body}',
+        'Command failed with '
+        '${response.statusCode}: ${response.body}',
       );
     }
 
@@ -149,6 +151,118 @@ class _ToolListScreenState extends State<ToolListScreen> {
     );
 
     _reload();
+  }
+
+  Future<void> _closeValve(GasTool tool) async {
+    final response = await http
+        .post(
+          Uri.parse('$apiUrl/tools/${tool.toolId}/close'),
+          headers: _headers,
+          body: jsonEncode({'operator_id': operatorId}),
+        )
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Close command failed with '
+        '${response.statusCode}: ${response.body}',
+      );
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${tool.name}: close command accepted')),
+    );
+
+    _reload();
+  }
+
+  Future<void> _closeAll() async {
+    final response = await http
+        .post(
+          Uri.parse('$apiUrl/close-all'),
+          headers: _headers,
+          body: jsonEncode({'operator_id': operatorId}),
+        )
+        .timeout(const Duration(seconds: 5));
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Close-all command failed with '
+        '${response.statusCode}: ${response.body}',
+      );
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Close-all command accepted')));
+
+    _reload();
+  }
+
+  Future<void> _confirmCloseAll() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Command all valves closed?'),
+          content: const Text(
+            'This sends a software close command to all six '
+            'controllers. It is not a hardware emergency stop.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Command All Closed'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _closingAll = true;
+    });
+
+    try {
+      await _closeAll();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$error'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _closingAll = false;
+        });
+      }
+    }
   }
 
   void _reload() {
@@ -177,6 +291,20 @@ class _ToolListScreenState extends State<ToolListScreen> {
       appBar: AppBar(
         title: const Text('Gas Flow Control'),
         actions: [
+          IconButton(
+            tooltip: 'Command all valves closed',
+            onPressed: _closingAll ? null : _confirmCloseAll,
+            icon: _closingAll
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    Icons.power_settings_new,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+          ),
           IconButton(
             tooltip: 'Refresh',
             onPressed: _reload,
@@ -242,6 +370,9 @@ class _ToolListScreenState extends State<ToolListScreen> {
                   onApply: (requestedPercent) {
                     return _applyValvePosition(tool, requestedPercent);
                   },
+                  onClose: () {
+                    return _closeValve(tool);
+                  },
                 );
               },
             ),
@@ -253,10 +384,16 @@ class _ToolListScreenState extends State<ToolListScreen> {
 }
 
 class ToolControlCard extends StatefulWidget {
-  const ToolControlCard({required this.tool, required this.onApply, super.key});
+  const ToolControlCard({
+    required this.tool,
+    required this.onApply,
+    required this.onClose,
+    super.key,
+  });
 
   final GasTool tool;
   final Future<void> Function(double requestedPercent) onApply;
+  final Future<void> Function() onClose;
 
   @override
   State<ToolControlCard> createState() => _ToolControlCardState();
@@ -311,6 +448,67 @@ class _ToolControlCardState extends State<ToolControlCard> {
     }
   }
 
+  Future<void> _confirmClose() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text('Command ${widget.tool.name} closed?'),
+          content: const Text(
+            'This sends a software close command to the controller. '
+            'It is not a hardware emergency stop.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop(false);
+              },
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+              ),
+              onPressed: () {
+                Navigator.of(dialogContext).pop(true);
+              },
+              child: const Text('Command Closed'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+    });
+
+    try {
+      await widget.onClose();
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${widget.tool.name}: $error'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _submitting = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tool = widget.tool;
@@ -319,6 +517,10 @@ class _ToolControlCardState extends State<ToolControlCard> {
         tool.connected && tool.fault == null && !_submitting;
 
     final canApply = controlsEnabled && _dirty;
+
+    final canClose =
+        controlsEnabled &&
+        (tool.requestedValvePercent > 0.1 || tool.actualValvePercent > 0.1);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -398,6 +600,15 @@ class _ToolControlCardState extends State<ToolControlCard> {
                       )
                     : const Icon(Icons.send),
                 label: Text(_submitting ? 'Applying…' : 'Apply Position'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: canClose ? _confirmClose : null,
+                icon: const Icon(Icons.power_settings_new),
+                label: const Text('Command Valve Closed'),
               ),
             ),
             if (tool.fault != null) ...[

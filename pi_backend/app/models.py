@@ -24,4 +24,7 @@ class ToolTelemetry(BaseModel):
 class SetValveRequest(BaseModel):
     requested_valve_percent: float = Field(ge=0, le=100)
     operator_id: str = Field(min_length=1, max_length=64)
+
+class CloseValveRequest(BaseModel):
+    operator_id: str = Field(min_length=1, max_length=64)   
     

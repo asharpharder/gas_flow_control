@@ -1,0 +1,23 @@
+# Python
+**/.venv/
+**/__pycache__/
+*.pyc
+.env
+
+# Flutter and Dart
+**/.dart_tool/
+**/build/
+
+# Android signing secrets
+*.jks
+*.keystore
+key.properties
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Generated application files
+releases/*.apk
+releases/*.aab

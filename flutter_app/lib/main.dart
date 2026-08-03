@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'screens/tool_list_screen.dart';
+import 'screens/app_shell.dart';
 import 'services/gas_api.dart';
 
 const apiUrl = String.fromEnvironment(
@@ -41,7 +41,7 @@ class GasControlApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: ToolListScreen(api: api),
+      home: AppShell(api: api),
     );
   }
 }

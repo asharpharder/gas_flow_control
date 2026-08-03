@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import '../models/command_audit_entry.dart';
 import '../models/gas_tool.dart';
 
 class GasApi {
@@ -88,11 +89,25 @@ class GasApi {
     return _decodeToolList(response.body);
   }
 
+  Future<List<CommandAuditEntry>> fetchAuditHistory({int limit = 100}) async {
+    final auditUri = _uri(
+      '/audit',
+    ).replace(queryParameters: {'limit': '$limit'});
+
+    final response = await http
+        .get(auditUri, headers: _headers)
+        .timeout(requestTimeout);
+
+    _requireSuccess(response, 'Load command history');
+
+    return _decodeAuditList(response.body);
+  }
+
   GasTool _decodeTool(String responseBody) {
     final decoded = jsonDecode(responseBody);
 
     if (decoded is! Map) {
-      throw const FormatException('Expected a tool object from the backend');
+      throw const FormatException('Expected a tool object from the backend.');
     }
 
     return GasTool.fromJson(Map<String, dynamic>.from(decoded));
@@ -102,11 +117,27 @@ class GasApi {
     final decoded = jsonDecode(responseBody);
 
     if (decoded is! List) {
-      throw const FormatException('Expected a tool list from the backend');
+      throw const FormatException('Expected a tool list from the backend.');
     }
 
     return decoded
         .map((item) => GasTool.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  List<CommandAuditEntry> _decodeAuditList(String responseBody) {
+    final decoded = jsonDecode(responseBody);
+
+    if (decoded is! List) {
+      throw const FormatException('Expected an audit list from the backend.');
+    }
+
+    return decoded
+        .map(
+          (item) => CommandAuditEntry.fromJson(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 

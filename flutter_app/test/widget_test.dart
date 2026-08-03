@@ -1,5 +1,5 @@
+import 'package:flutter_app/models/gas_tool.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter_app/main.dart';
 
 void main() {
   test('GasTool parses backend telemetry', () {
@@ -11,6 +11,7 @@ void main() {
       'measured_flow_cfh': 18.2,
       'connected': true,
       'fault': null,
+      'updated_at': '2026-08-03T12:00:00Z',
     });
 
     expect(tool.toolId, 1);
@@ -20,5 +21,6 @@ void main() {
     expect(tool.measuredFlowCfh, 18.2);
     expect(tool.connected, isTrue);
     expect(tool.fault, isNull);
+    expect(tool.updatedAt.isUtc, isTrue);
   });
 }

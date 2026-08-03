@@ -98,4 +98,10 @@ async def close_valve(
         return await hardware.close_valve(tool_id)
     except ToolNotFoundError as error: 
         raise HTTPException(status_code=404, detail=str(error)) from error
-        
+
+@app.post("/close-all", response_model=list[ToolTelemetry])
+async def close_all(
+    authorization: str | None = Header(default=None),
+) -> list[ToolTelemetry]:
+    require_token(authorization)
+    return await hardware.close_all()

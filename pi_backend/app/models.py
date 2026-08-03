@@ -13,7 +13,6 @@ class ToolTelemetry(BaseModel):
 
     requested_valve_percent: float = Field(ge=0, le=100)
     actual_valve_percent: float = Field(ge=0, le=100)
-
     measured_flow_cfh: float = Field(ge=0)
 
     connected: bool
@@ -25,6 +24,22 @@ class SetValveRequest(BaseModel):
     requested_valve_percent: float = Field(ge=0, le=100)
     operator_id: str = Field(min_length=1, max_length=64)
 
+
 class CloseValveRequest(BaseModel):
-    operator_id: str = Field(min_length=1, max_length=64)   
+    operator_id: str = Field(min_length=1, max_length=64)
+
+
+class CommandAuditEntry(BaseModel):
+    id: int = Field(ge=1)
+    timestamp: datetime
+    operator_id: str
+    action: str
+    tool_id: int | None = Field(default=None, ge=1)
+    requested_valve_percent: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+    success: bool
+    detail: str
     

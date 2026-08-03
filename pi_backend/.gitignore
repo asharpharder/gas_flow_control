@@ -21,3 +21,5 @@ Thumbs.db
 # Generated application files
 releases/*.apk
 releases/*.aab
+
+pi_backend/data/

@@ -23,6 +23,8 @@ class ToolControlCard extends StatefulWidget {
 }
 
 class _ToolControlCardState extends State<ToolControlCard> {
+  static const double _adjustmentStep = 5;
+
   late double _draftPercent;
 
   bool _submitting = false;
@@ -45,8 +47,40 @@ class _ToolControlCardState extends State<ToolControlCard> {
     }
   }
 
+  bool get _toolAvailable {
+    return widget.commandsEnabled &&
+        widget.tool.isOnline &&
+        !_submitting;
+  }
+
+  void _setDraftPercent(double value) {
+    final clampedValue = value.clamp(0.0, 100.0);
+
+    setState(() {
+      _draftPercent = clampedValue;
+      _dirty =
+          (clampedValue - widget.tool.requestedValvePercent).abs() >= 0.5;
+    });
+  }
+
+  void _decreaseDraft() {
+    if (!_toolAvailable) {
+      return;
+    }
+
+    _setDraftPercent(_draftPercent - _adjustmentStep);
+  }
+
+  void _increaseDraft() {
+    if (!_toolAvailable) {
+      return;
+    }
+
+    _setDraftPercent(_draftPercent + _adjustmentStep);
+  }
+
   Future<void> _apply() async {
-    if (!widget.commandsEnabled || _submitting) {
+    if (!_toolAvailable || !_dirty) {
       return;
     }
 
@@ -57,11 +91,13 @@ class _ToolControlCardState extends State<ToolControlCard> {
     try {
       await widget.onApply(_draftPercent);
 
-      if (mounted) {
-        setState(() {
-          _dirty = false;
-        });
+      if (!mounted) {
+        return;
       }
+
+      setState(() {
+        _dirty = false;
+      });
     } catch (error) {
       if (!mounted) {
         return;
@@ -83,41 +119,57 @@ class _ToolControlCardState extends State<ToolControlCard> {
   }
 
   Future<void> _confirmClose() async {
-    if (!widget.commandsEnabled || _submitting) {
+    if (!_toolAvailable) {
       return;
     }
 
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
+        final colorScheme = Theme.of(dialogContext).colorScheme;
+
         return AlertDialog(
-          title: Text('Command ${widget.tool.name} closed?'),
-          content: const Text(
-            'This sends a software close command to the controller. '
-            'It is not a hardware emergency stop.',
+          icon: Icon(
+            Icons.warning_amber_rounded,
+            size: 42,
+            color: colorScheme.error,
           ),
+          title: Text(
+            'Close ${widget.tool.name} valve?',
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'This sends a software close command to this controller.\n\n'
+            'It does not replace a physical emergency stop or manual '
+            'gas shutoff.',
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
           actions: [
-            TextButton(
+            OutlinedButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Cancel'),
+              child: const Text('CANCEL'),
             ),
-            FilledButton(
+            FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                backgroundColor: colorScheme.error,
+                foregroundColor: colorScheme.onError,
               ),
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Command Closed'),
+              icon: const Icon(Icons.power_settings_new),
+              label: const Text('CLOSE VALVE'),
             ),
           ],
         );
       },
     );
 
-    if (confirmed != true || !mounted || !widget.commandsEnabled) {
+    if (confirmed != true || !mounted || !_toolAvailable) {
       return;
     }
 
@@ -128,12 +180,14 @@ class _ToolControlCardState extends State<ToolControlCard> {
     try {
       await widget.onClose();
 
-      if (mounted) {
-        setState(() {
-          _draftPercent = 0;
-          _dirty = false;
-        });
+      if (!mounted) {
+        return;
       }
+
+      setState(() {
+        _draftPercent = 0;
+        _dirty = false;
+      });
     } catch (error) {
       if (!mounted) {
         return;
@@ -154,157 +208,431 @@ class _ToolControlCardState extends State<ToolControlCard> {
     }
   }
 
+  Color _statusColor() {
+    switch (widget.tool.status) {
+      case GasToolStatus.online:
+        return widget.commandsEnabled
+            ? Colors.green
+            : Colors.orangeAccent;
+      case GasToolStatus.offline:
+        return Colors.redAccent;
+      case GasToolStatus.fault:
+        return Colors.redAccent;
+    }
+  }
+
+  IconData _statusIcon() {
+    switch (widget.tool.status) {
+      case GasToolStatus.online:
+        return widget.commandsEnabled
+            ? Icons.check_circle
+            : Icons.warning_amber_rounded;
+      case GasToolStatus.offline:
+        return Icons.link_off;
+      case GasToolStatus.fault:
+        return Icons.error;
+    }
+  }
+
+  String _statusText() {
+    if (!widget.commandsEnabled && widget.tool.isOnline) {
+      return 'LOCKED';
+    }
+
+    return widget.tool.statusLabel;
+  }
+
+  Widget _buildStatusChip() {
+    final color = _statusColor();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 7,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: color.withValues(alpha: 0.7),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _statusIcon(),
+            size: 18,
+            color: color,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _statusText(),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadingPanel({
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 16,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: colorScheme.outline.withValues(alpha: 0.25),
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              size: 28,
+              color: colorScheme.primary,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDisabledWarning() {
+    String message;
+
+    if (!widget.commandsEnabled) {
+      message = widget.commandsDisabledReason;
+    } else if (widget.tool.isOffline) {
+      message = 'This tool controller is disconnected.';
+    } else if (widget.tool.hasFault) {
+      message = 'Controller fault: ${widget.tool.fault}';
+    } else {
+      return const SizedBox.shrink();
+    }
+
+    return _buildWarningPanel(
+      icon: Icons.lock,
+      message: message,
+      color: Colors.redAccent,
+    );
+  }
+
+  Widget _buildValveMismatchWarning() {
+    if (!widget.tool.valvePositionMismatch) {
+      return const SizedBox.shrink();
+    }
+
+    return _buildWarningPanel(
+      icon: Icons.sync_problem,
+      color: Colors.orangeAccent,
+      message:
+          'Valve position mismatch detected. Commanded position is '
+          '${widget.tool.requestedValveLabel}, but the actual position is '
+          '${widget.tool.actualValveLabel}. Difference: '
+          '${widget.tool.valveDifference.toStringAsFixed(1)}%.',
+    );
+  }
+
+  Widget _buildWarningPanel({
+    required IconData icon,
+    required String message,
+    required Color color,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            icon,
+            size: 22,
+            color: color,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdjustmentButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Expanded(
+      child: SizedBox(
+        height: 56,
+        child: OutlinedButton.icon(
+          onPressed: _toolAvailable ? onPressed : null,
+          icon: Icon(icon, size: 25),
+          label: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tool = widget.tool;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    final controlsEnabled =
-        widget.commandsEnabled &&
-        tool.connected &&
-        tool.fault == null &&
-        !_submitting;
-
-    final canApply = controlsEnabled && _dirty;
-
-    final canClose =
-        controlsEnabled &&
-        (tool.requestedValvePercent > 0.1 || tool.actualValvePercent > 0.1);
+    final canApply = _toolAvailable && _dirty;
+    final canClose = _toolAvailable && tool.valveIsOpen;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      margin: const EdgeInsets.only(bottom: 14),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            color: _statusColor().withValues(alpha: 0.08),
+            child: Row(
               children: [
                 Expanded(
                   child: Text(
                     tool.name,
-                    style: Theme.of(context).textTheme.titleLarge,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
-                Icon(
-                  tool.connected ? Icons.check_circle : Icons.error,
-                  color: tool.connected ? Colors.greenAccent : Colors.redAccent,
-                ),
+                _buildStatusChip(),
               ],
             ),
-            if (!widget.commandsEnabled) ...[
-              const SizedBox(height: 12),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
-                ),
-                child: Row(
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                if (!_toolAvailable) ...[
+                  _buildDisabledWarning(),
+                  const SizedBox(height: 12),
+                ],
+                if (tool.valvePositionMismatch) ...[
+                  _buildValveMismatchWarning(),
+                  const SizedBox(height: 12),
+                ],
+                Row(
                   children: [
-                    const Icon(Icons.lock, size: 18, color: Colors.redAccent),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.commandsDisabledReason,
-                        style: const TextStyle(color: Colors.redAccent),
-                      ),
+                    _buildReadingPanel(
+                      label: 'ACTUAL VALVE',
+                      value: tool.actualValveLabel,
+                      icon: Icons.tune,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildReadingPanel(
+                      label: 'MEASURED FLOW',
+                      value: tool.measuredFlowLabel,
+                      icon: Icons.air,
                     ),
                   ],
                 ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              'Actual valve position: '
-              '${tool.actualValvePercent.toStringAsFixed(1)}%',
-            ),
-            const SizedBox(height: 8),
-            LinearProgressIndicator(value: tool.actualValvePercent / 100),
-            const SizedBox(height: 16),
-            Text(
-              'Measured flow: '
-              '${tool.measuredFlowCfh.toStringAsFixed(1)} CFH',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const Divider(height: 32),
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'Draft valve position',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(height: 16),
+                LinearProgressIndicator(
+                  value: tool.normalizedActualValvePosition,
+                  minHeight: 9,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color:
+                        colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: colorScheme.primary.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'COMMAND SETPOINT',
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelLarge
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.7,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${_draftPercent.toStringAsFixed(0)}%',
+                        style:
+                            Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _dirty
+                            ? 'Not yet applied'
+                            : 'Current command: ${tool.requestedValveLabel}',
+                        style:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: _dirty
+                                      ? Colors.orangeAccent
+                                      : Colors.white70,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  '${_draftPercent.toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.titleLarge,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    _buildAdjustmentButton(
+                      icon: Icons.remove,
+                      label: '−5%',
+                      onPressed: _decreaseDraft,
+                    ),
+                    const SizedBox(width: 12),
+                    _buildAdjustmentButton(
+                      icon: Icons.add,
+                      label: '+5%',
+                      onPressed: _increaseDraft,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Slider(
+                  value: _draftPercent.clamp(0.0, 100.0),
+                  min: 0,
+                  max: 100,
+                  divisions: 100,
+                  label: '${_draftPercent.toStringAsFixed(0)}%',
+                  onChanged: _toolAvailable
+                      ? (value) {
+                          _setDraftPercent(value);
+                        }
+                      : null,
+                ),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('0%'),
+                    Text('100%'),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: FilledButton.icon(
+                    onPressed: canApply ? _apply : null,
+                    icon: _submitting
+                        ? const SizedBox(
+                            width: 21,
+                            height: 21,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.send,
+                            size: 24,
+                          ),
+                    label: Text(
+                      _submitting
+                          ? 'SENDING COMMAND...'
+                          : _dirty
+                              ? 'APPLY ${_draftPercent.toStringAsFixed(0)}%'
+                              : 'POSITION APPLIED',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 56,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                      side: BorderSide(
+                        color: canClose
+                            ? colorScheme.error
+                            : colorScheme.outline.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    onPressed: canClose ? _confirmClose : null,
+                    icon: const Icon(
+                      Icons.power_settings_new,
+                      size: 24,
+                    ),
+                    label: const Text(
+                      'CLOSE THIS VALVE',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            Slider(
-              value: _draftPercent,
-              min: 0,
-              max: 100,
-              divisions: 100,
-              label: '${_draftPercent.toStringAsFixed(0)}%',
-              onChanged: controlsEnabled
-                  ? (value) {
-                      setState(() {
-                        _draftPercent = value;
-                        _dirty =
-                            (value - tool.requestedValvePercent).abs() >= 0.5;
-                      });
-                    }
-                  : null,
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: canApply ? _apply : null,
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(_submitting ? 'Applying…' : 'Apply Position'),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: canClose ? _confirmClose : null,
-                icon: const Icon(Icons.power_settings_new),
-                label: const Text('Command Valve Closed'),
-              ),
-            ),
-            if (!tool.connected) ...[
-              const SizedBox(height: 12),
-              const Text(
-                'Tool controller is disconnected.',
-                style: TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-            if (tool.fault != null) ...[
-              const SizedBox(height: 12),
-              Text(
-                'Fault: ${tool.fault}',
-                style: const TextStyle(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -7,7 +7,10 @@ import '../services/gas_api.dart';
 import '../widgets/tool_control_card.dart';
 
 class ToolListScreen extends StatefulWidget {
-  const ToolListScreen({required this.api, super.key});
+  const ToolListScreen({
+    required this.api,
+    super.key,
+  });
 
   final GasApi api;
 
@@ -16,12 +19,13 @@ class ToolListScreen extends StatefulWidget {
 }
 
 class _ToolListScreenState extends State<ToolListScreen> {
-  static const _refreshInterval = Duration(seconds: 2);
-  static const _staleAfter = Duration(seconds: 6);
+  static const Duration _refreshInterval = Duration(seconds: 2);
+  static const Duration _staleAfter = Duration(seconds: 6);
 
   final List<GasTool> _tools = [];
 
   Timer? _refreshTimer;
+
   DateTime? _lastSuccessfulRefresh;
   DateTime _now = DateTime.now();
 
@@ -181,7 +185,9 @@ class _ToolListScreenState extends State<ToolListScreen> {
     }
 
     try {
-      final updatedTool = await widget.api.closeValve(toolId: tool.toolId);
+      final updatedTool = await widget.api.closeValve(
+        toolId: tool.toolId,
+      );
 
       _replaceTool(updatedTool);
 
@@ -190,7 +196,11 @@ class _ToolListScreenState extends State<ToolListScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${tool.name}: close command accepted')),
+        SnackBar(
+          content: Text(
+            '${tool.name}: close command accepted',
+          ),
+        ),
       );
     } catch (error) {
       _recordCommandFailure(error);
@@ -219,7 +229,9 @@ class _ToolListScreenState extends State<ToolListScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Close-all command accepted')),
+        const SnackBar(
+          content: Text('Close-all command accepted'),
+        ),
       );
     } catch (error) {
       _recordCommandFailure(error);
@@ -230,28 +242,44 @@ class _ToolListScreenState extends State<ToolListScreen> {
   Future<void> _confirmCloseAll() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Command all valves closed?'),
-          content: const Text(
-            'This sends a software close command to all six '
-            'controllers. It is not a hardware emergency stop.',
+          icon: Icon(
+            Icons.warning_amber_rounded,
+            size: 42,
+            color: Theme.of(dialogContext).colorScheme.error,
           ),
+          title: const Text(
+            'Close all valves?',
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'This sends a software close command to all six controllers.\n\n'
+            'This action does not replace a physical emergency stop or '
+            'manual gas shutoff.',
+            textAlign: TextAlign.center,
+          ),
+          actionsAlignment: MainAxisAlignment.spaceEvenly,
           actions: [
-            TextButton(
+            OutlinedButton(
               onPressed: () {
                 Navigator.of(dialogContext).pop(false);
               },
-              child: const Text('Cancel'),
+              child: const Text('CANCEL'),
             ),
-            FilledButton(
+            FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                backgroundColor:
+                    Theme.of(dialogContext).colorScheme.error,
+                foregroundColor:
+                    Theme.of(dialogContext).colorScheme.onError,
               ),
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
               },
-              child: const Text('Command All Closed'),
+              icon: const Icon(Icons.power_settings_new),
+              label: const Text('CLOSE ALL'),
             ),
           ],
         );
@@ -269,6 +297,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
           backgroundColor: Colors.red,
         ),
       );
+
       return;
     }
 
@@ -284,7 +313,10 @@ class _ToolListScreenState extends State<ToolListScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('$error'),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {
@@ -311,7 +343,9 @@ class _ToolListScreenState extends State<ToolListScreen> {
         _tools[index] = updatedTool;
       } else {
         _tools.add(updatedTool);
-        _tools.sort((a, b) => a.toolId.compareTo(b.toolId));
+        _tools.sort(
+          (a, b) => a.toolId.compareTo(b.toolId),
+        );
       }
 
       _lastSuccessfulRefresh = receivedAt;
@@ -339,7 +373,17 @@ class _ToolListScreenState extends State<ToolListScreen> {
     }
 
     final difference = _now.difference(lastRefresh);
-    final seconds = difference.inSeconds < 0 ? 0 : difference.inSeconds;
+    final seconds = difference.inSeconds < 0
+        ? 0
+        : difference.inSeconds;
+
+    if (seconds == 0) {
+      return 'just now';
+    }
+
+    if (seconds == 1) {
+      return '1 second ago';
+    }
 
     return '$seconds seconds ago';
   }
@@ -353,80 +397,113 @@ class _ToolListScreenState extends State<ToolListScreen> {
     if (_initialLoading) {
       color = Colors.orange;
       icon = Icons.sync;
-      title = 'Connecting';
+      title = 'CONNECTING';
       message = 'Waiting for the first controller response.';
     } else if (_connectionError != null) {
       color = Colors.redAccent;
       icon = Icons.cloud_off;
-      title = 'Connection Lost — Commands Disabled';
+      title = 'CONNECTION LOST — COMMANDS DISABLED';
       message = 'Last successful update: ${_lastUpdateText()}';
     } else if (_telemetryIsStale) {
       color = Colors.orangeAccent;
-      icon = Icons.warning_amber;
-      title = 'Telemetry Stale — Commands Disabled';
+      icon = Icons.warning_amber_rounded;
+      title = 'TELEMETRY STALE — COMMANDS DISABLED';
       message = 'Last successful update: ${_lastUpdateText()}';
     } else {
       color = Colors.green;
       icon = Icons.cloud_done;
-      title = 'Controller Connected';
+      title = 'CONTROLLER CONNECTED';
       message = 'Telemetry updated ${_lastUpdateText()}';
     }
 
-    return Container(
-      width: double.infinity,
-      color: color.withValues(alpha: 0.18),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(message, style: Theme.of(context).textTheme.bodySmall),
-              ],
+    return Semantics(
+      liveRegion: true,
+      label: '$title. $message',
+      child: Container(
+        width: double.infinity,
+        color: color.withValues(alpha: 0.18),
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 30,
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildToolBody() {
     if (_initialLoading && _tools.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
     }
 
     if (_tools.isEmpty && _connectionError != null) {
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off, size: 56, color: Colors.redAccent),
+              const Icon(
+                Icons.cloud_off,
+                size: 64,
+                color: Colors.redAccent,
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Unable to connect to the controller',
-                style: TextStyle(fontSize: 20),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              SelectableText(_connectionError!, textAlign: TextAlign.center),
+              SelectableText(
+                _connectionError!,
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: _requestInProgress
-                    ? null
-                    : () {
-                        unawaited(_loadTools());
-                      },
-                icon: const Icon(Icons.refresh),
-                label: const Text('Try Again'),
+              SizedBox(
+                height: 52,
+                child: FilledButton.icon(
+                  onPressed: _requestInProgress
+                      ? null
+                      : () {
+                          unawaited(_loadTools());
+                        },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('TRY AGAIN'),
+                ),
               ),
             ],
           ),
@@ -435,25 +512,40 @@ class _ToolListScreenState extends State<ToolListScreen> {
     }
 
     if (_tools.isEmpty) {
-      return const Center(child: Text('No welding tools were found.'));
+      return const Center(
+        child: Text(
+          'No welding tools were found.',
+          style: TextStyle(fontSize: 18),
+        ),
+      );
     }
 
     return RefreshIndicator(
       onRefresh: _loadTools,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.fromLTRB(
+          12,
+          12,
+          12,
+          20,
+        ),
         itemCount: _tools.length,
         itemBuilder: (context, index) {
           final tool = _tools[index];
 
           return ToolControlCard(
-            key: ValueKey('${tool.toolId}-$_cardResetVersion'),
+            key: ValueKey(
+              '${tool.toolId}-$_cardResetVersion',
+            ),
             tool: tool,
             commandsEnabled: _commandsEnabled,
             commandsDisabledReason: _commandsDisabledReason,
             onApply: (requestedPercent) {
-              return _applyValvePosition(tool, requestedPercent);
+              return _applyValvePosition(
+                tool,
+                requestedPercent,
+              );
             },
             onClose: () {
               return _closeValve(tool);
@@ -464,30 +556,92 @@ class _ToolListScreenState extends State<ToolListScreen> {
     );
   }
 
+  Widget _buildCloseAllButton() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(
+          12,
+          10,
+          12,
+          12,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).dividerColor,
+            ),
+          ),
+          boxShadow: const [
+            BoxShadow(
+              blurRadius: 8,
+              offset: Offset(0, -2),
+              color: Color(0x22000000),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          height: 58,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: colorScheme.error,
+              foregroundColor: colorScheme.onError,
+              disabledBackgroundColor:
+                  colorScheme.error.withValues(alpha: 0.25),
+              disabledForegroundColor:
+                  colorScheme.onSurface.withValues(alpha: 0.45),
+              textStyle: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.4,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            onPressed: _commandsEnabled
+                ? _confirmCloseAll
+                : null,
+            icon: _closingAll
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(
+                    Icons.power_settings_new,
+                    size: 26,
+                  ),
+            label: Text(
+              _closingAll
+                  ? 'CLOSING ALL VALVES...'
+                  : 'CLOSE ALL VALVES',
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gas Flow Control'),
+        title: const Text(
+          'Gas Flow Control',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           IconButton(
-            tooltip: 'Command all valves closed',
-            onPressed: _commandsEnabled ? _confirmCloseAll : null,
-            icon: _closingAll
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    Icons.power_settings_new,
-                    color: _commandsEnabled
-                        ? Theme.of(context).colorScheme.error
-                        : null,
-                  ),
-          ),
-          IconButton(
-            tooltip: 'Refresh',
+            tooltip: 'Refresh controller telemetry',
             onPressed: _requestInProgress
                 ? null
                 : () {
@@ -495,9 +649,11 @@ class _ToolListScreenState extends State<ToolListScreen> {
                   },
             icon: _requestInProgress
                 ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Icon(Icons.refresh),
           ),
@@ -506,7 +662,10 @@ class _ToolListScreenState extends State<ToolListScreen> {
       body: Column(
         children: [
           _buildConnectionBanner(),
-          Expanded(child: _buildToolBody()),
+          Expanded(
+            child: _buildToolBody(),
+          ),
+          _buildCloseAllButton(),
         ],
       ),
     );

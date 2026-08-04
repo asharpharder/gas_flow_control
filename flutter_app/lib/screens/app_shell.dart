@@ -5,7 +5,10 @@ import 'audit_history_screen.dart';
 import 'tool_list_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({required this.api, super.key});
+  const AppShell({
+    required this.api,
+    super.key,
+  });
 
   final GasApi api;
 
@@ -28,29 +31,76 @@ class _AppShellState extends State<AppShell> {
     ];
   }
 
+  void _selectScreen(int index) {
+    if (index == _selectedIndex) {
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _screens),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.tune),
-            selectedIcon: Icon(Icons.tune),
-            label: 'Controls',
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: colorScheme.outline.withValues(alpha: 0.25),
+              ),
+            ),
+            boxShadow: const [
+              BoxShadow(
+                blurRadius: 10,
+                offset: Offset(0, -2),
+                color: Color(0x22000000),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.history),
-            selectedIcon: Icon(Icons.history),
-            label: 'History',
+          child: NavigationBar(
+            height: 76,
+            selectedIndex: _selectedIndex,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            onDestinationSelected: _selectScreen,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(
+                  Icons.tune_outlined,
+                  size: 28,
+                ),
+                selectedIcon: Icon(
+                  Icons.tune,
+                  size: 30,
+                ),
+                label: 'Controls',
+                tooltip: 'Valve controls',
+              ),
+              NavigationDestination(
+                icon: Icon(
+                  Icons.history_outlined,
+                  size: 28,
+                ),
+                selectedIcon: Icon(
+                  Icons.history,
+                  size: 30,
+                ),
+                label: 'History',
+                tooltip: 'Command history',
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

@@ -22,4 +22,6 @@ Thumbs.db
 releases/*.apk
 releases/*.aab
 
-pi_backend/data/
+# Runtime backend data
+data/
+

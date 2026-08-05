@@ -9,7 +9,9 @@ if (-not (Test-Path $pythonPath)) {
 
 Set-Location $backendPath
 
-$env:GAS_APP_TOKEN = "local-simulation-token"
+if (-not $env:GAS_APP_TOKEN) {
+    $env:GAS_APP_TOKEN = "local-simulation-token"
+}
 
 Write-Host "Starting Gas Flow Control backend..."
 Write-Host "Backend address: http://127.0.0.1:8000"

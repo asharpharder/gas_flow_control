@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: gas-flow-control-api
+    runtime: python
+    rootDir: pi_backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+
+      - key: GAS_APP_TOKEN
+        sync: false
+
+      - key: GAS_ALLOWED_ORIGINS
+        sync: false
+        

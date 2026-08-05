@@ -16,25 +16,59 @@ from .models import (
 
 logger = logging.getLogger("uvicorn.error")
 
+
+def _read_allowed_origins() -> list[str]:
+    configured_origins = os.getenv(
+        "GAS_ALLOWED_ORIGINS",
+        "",
+    )
+
+    origins = {
+        origin.strip().rstrip("/")
+        for origin in configured_origins.split(",")
+        if origin.strip()
+    }
+
+    origins.update(
+        {
+            "http://localhost",
+            "http://127.0.0.1",
+        }
+    )
+
+    return sorted(origins)
+
+
 API_TOKEN = os.getenv(
     "GAS_APP_TOKEN",
     "local-simulation-token",
 )
 
+ALLOWED_ORIGINS = _read_allowed_origins()
+
 app = FastAPI(
     title="Gas Flow Control API",
-    version="0.3.0",
+    version="0.4.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=(
         r"^http://(localhost|127\.0\.0\.1):[0-9]+$"
     ),
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_credentials=False,
+    allow_methods=[
+        "GET",
+        "POST",
+        "OPTIONS",
+    ],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+    ],
 )
+
 
 hardware = SimulatedHardware(tool_count=6)
 audit_store = CommandAuditStore()
@@ -80,6 +114,7 @@ async def health() -> dict[str, object]:
         "ok": True,
         "mode": "simulation",
         "audit_storage": "sqlite",
+        "api_version": app.version,
     }
 
 
@@ -91,6 +126,7 @@ async def get_tools(
     authorization: str | None = Header(default=None),
 ) -> list[ToolTelemetry]:
     require_token(authorization)
+
     return await hardware.read_all()
 
 
@@ -99,10 +135,15 @@ async def get_tools(
     response_model=list[CommandAuditEntry],
 )
 async def get_audit_history(
-    limit: int = Query(default=100, ge=1, le=500),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=500,
+    ),
     authorization: str | None = Header(default=None),
 ) -> list[CommandAuditEntry]:
     require_token(authorization)
+
     return await audit_store.list_recent(limit)
 
 
@@ -152,7 +193,9 @@ async def set_valve_position(
             detail=f"{type(error).__name__}: {error}",
         )
 
-        logger.exception("Valve-position command failed.")
+        logger.exception(
+            "Valve-position command failed."
+        )
 
         raise HTTPException(
             status_code=500,
@@ -185,7 +228,9 @@ async def close_valve(
     require_token(authorization)
 
     try:
-        telemetry = await hardware.close_valve(tool_id)
+        telemetry = await hardware.close_valve(
+            tool_id,
+        )
     except ToolNotFoundError as error:
         await record_command(
             operator_id=request.operator_id,
@@ -210,7 +255,9 @@ async def close_valve(
             detail=f"{type(error).__name__}: {error}",
         )
 
-        logger.exception("Close-valve command failed.")
+        logger.exception(
+            "Close-valve command failed."
+        )
 
         raise HTTPException(
             status_code=500,
@@ -251,7 +298,9 @@ async def close_all(
             detail=f"{type(error).__name__}: {error}",
         )
 
-        logger.exception("Close-all command failed.")
+        logger.exception(
+            "Close-all command failed."
+        )
 
         raise HTTPException(
             status_code=500,

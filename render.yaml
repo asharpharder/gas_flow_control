@@ -3,7 +3,7 @@ services:
     name: gas-flow-control-api
     runtime: python
     rootDir: pi_backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-lock.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
     envVars:
@@ -15,4 +15,3 @@ services:
 
       - key: GAS_ALLOWED_ORIGINS
         sync: false
-        

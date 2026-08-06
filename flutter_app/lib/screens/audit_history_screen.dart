@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../models/command_audit_entry.dart';
-import '../services/gas_api.dart';
+import '../services/gas_service.dart';
 
 class AuditHistoryScreen extends StatefulWidget {
-  const AuditHistoryScreen({
-    required this.api,
-    super.key,
-  });
+  const AuditHistoryScreen({required this.api, super.key});
 
-  final GasApi api;
+  final GasService api;
 
   @override
   State<AuditHistoryScreen> createState() => _AuditHistoryScreenState();
@@ -66,8 +63,8 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
     final displayHour = hour == 0
         ? 12
         : hour > 12
-            ? hour - 12
-            : hour;
+        ? hour - 12
+        : hour;
 
     final period = hour >= 12 ? 'PM' : 'AM';
 
@@ -86,9 +83,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
         '$failed failed';
   }
 
-  List<CommandAuditEntry> _filteredEntries(
-    List<CommandAuditEntry> entries,
-  ) {
+  List<CommandAuditEntry> _filteredEntries(List<CommandAuditEntry> entries) {
     if (!_showFailuresOnly) {
       return entries;
     }
@@ -101,16 +96,11 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
     final text = entry.success ? 'SUCCESS' : 'FAILED';
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 10,
-        vertical: 6,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: 0.65),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.65)),
       ),
       child: Text(
         text,
@@ -136,19 +126,15 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 18,
-            color: colorScheme.primary,
-          ),
+          Icon(icon, size: 18, color: colorScheme.primary),
           const SizedBox(width: 8),
           SizedBox(
             width: 84,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           Expanded(
@@ -167,11 +153,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
     final statusColor = entry.success ? Colors.green : Colors.redAccent;
 
     return Card(
-      margin: const EdgeInsets.only(
-        left: 12,
-        right: 12,
-        bottom: 12,
-      ),
+      margin: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -183,9 +165,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(
-                  entry.success
-                      ? Icons.check_circle
-                      : Icons.error_rounded,
+                  entry.success ? Icons.check_circle : Icons.error_rounded,
                   color: statusColor,
                   size: 28,
                 ),
@@ -194,8 +174,8 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
                   child: Text(
                     entry.actionLabel,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -234,10 +214,10 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
                 Text(
                   'DETAIL',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.6,
-                      ),
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.6,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 SelectableText(
@@ -263,18 +243,16 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: colorScheme.outline.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.25)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             _summaryText(entries),
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 10),
           Row(
@@ -283,10 +261,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
                 child: FilterChip(
                   selected: !_showFailuresOnly,
                   label: const Text('All Commands'),
-                  avatar: const Icon(
-                    Icons.list_alt,
-                    size: 18,
-                  ),
+                  avatar: const Icon(Icons.list_alt, size: 18),
                   onSelected: (_) {
                     setState(() {
                       _showFailuresOnly = false;
@@ -299,10 +274,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
                 child: FilterChip(
                   selected: _showFailuresOnly,
                   label: const Text('Failures Only'),
-                  avatar: const Icon(
-                    Icons.error_outline,
-                    size: 18,
-                  ),
+                  avatar: const Icon(Icons.error_outline, size: 18),
                   onSelected: (_) {
                     setState(() {
                       _showFailuresOnly = true;
@@ -324,34 +296,22 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
     );
   }
 
-  Widget _buildEmptyState({
-    required String message,
-    required IconData icon,
-  }) {
+  Widget _buildEmptyState({required String message, required IconData icon}) {
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           const SizedBox(height: 130),
-          Icon(
-            icon,
-            size: 64,
-          ),
+          Icon(icon, size: 64),
           const SizedBox(height: 16),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Pull down to refresh.',
-            textAlign: TextAlign.center,
-          ),
+          const Text('Pull down to refresh.', textAlign: TextAlign.center),
         ],
       ),
     );
@@ -413,17 +373,11 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
             const SizedBox(height: 16),
             const Text(
               'Unable to load command history',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
-            SelectableText(
-              '$error',
-              textAlign: TextAlign.center,
-            ),
+            SelectableText('$error', textAlign: TextAlign.center),
             const SizedBox(height: 20),
             SizedBox(
               height: 52,
@@ -433,9 +387,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                        ),
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.refresh),
                 label: const Text('TRY AGAIN'),
@@ -453,9 +405,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
       appBar: AppBar(
         title: const Text(
           'Command History',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
@@ -465,9 +415,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
           ),
@@ -478,9 +426,7 @@ class _AuditHistoryScreenState extends State<AuditHistoryScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {

@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../services/gas_api.dart';
+import '../services/gas_service.dart';
 import 'audit_history_screen.dart';
 import 'tool_list_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({
-    required this.api,
-    super.key,
-  });
+  const AppShell({required this.api, super.key});
 
-  final GasApi api;
+  final GasService api;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -46,10 +43,7 @@ class _AppShellState extends State<AppShell> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _selectedIndex, children: _screens),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -75,26 +69,14 @@ class _AppShellState extends State<AppShell> {
             onDestinationSelected: _selectScreen,
             destinations: const [
               NavigationDestination(
-                icon: Icon(
-                  Icons.tune_outlined,
-                  size: 28,
-                ),
-                selectedIcon: Icon(
-                  Icons.tune,
-                  size: 30,
-                ),
+                icon: Icon(Icons.tune_outlined, size: 28),
+                selectedIcon: Icon(Icons.tune, size: 30),
                 label: 'Controls',
                 tooltip: 'Valve controls',
               ),
               NavigationDestination(
-                icon: Icon(
-                  Icons.history_outlined,
-                  size: 28,
-                ),
-                selectedIcon: Icon(
-                  Icons.history,
-                  size: 30,
-                ),
+                icon: Icon(Icons.history_outlined, size: 28),
+                selectedIcon: Icon(Icons.history, size: 30),
                 label: 'History',
                 tooltip: 'Command history',
               ),

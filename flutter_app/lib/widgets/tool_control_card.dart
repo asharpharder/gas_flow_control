@@ -48,9 +48,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
   }
 
   bool get _toolAvailable {
-    return widget.commandsEnabled &&
-        widget.tool.isOnline &&
-        !_submitting;
+    return widget.commandsEnabled && widget.tool.isOnline && !_submitting;
   }
 
   void _setDraftPercent(double value) {
@@ -58,8 +56,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
 
     setState(() {
       _draftPercent = clampedValue;
-      _dirty =
-          (clampedValue - widget.tool.requestedValvePercent).abs() >= 0.5;
+      _dirty = (clampedValue - widget.tool.requestedValvePercent).abs() >= 0.5;
     });
   }
 
@@ -211,9 +208,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
   Color _statusColor() {
     switch (widget.tool.status) {
       case GasToolStatus.online:
-        return widget.commandsEnabled
-            ? Colors.green
-            : Colors.orangeAccent;
+        return widget.commandsEnabled ? Colors.green : Colors.orangeAccent;
       case GasToolStatus.offline:
         return Colors.redAccent;
       case GasToolStatus.fault:
@@ -246,25 +241,16 @@ class _ToolControlCardState extends State<ToolControlCard> {
     final color = _statusColor();
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 7,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: color.withValues(alpha: 0.7),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.7)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            _statusIcon(),
-            size: 18,
-            color: color,
-          ),
+          Icon(_statusIcon(), size: 18, color: color),
           const SizedBox(width: 6),
           Text(
             _statusText(),
@@ -288,10 +274,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
 
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 16,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         decoration: BoxDecoration(
           color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(12),
@@ -301,11 +284,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
         ),
         child: Column(
           children: [
-            Icon(
-              icon,
-              size: 28,
-              color: colorScheme.primary,
-            ),
+            Icon(icon, size: 28, color: colorScheme.primary),
             const SizedBox(height: 8),
             Text(
               label,
@@ -315,9 +294,9 @@ class _ToolControlCardState extends State<ToolControlCard> {
             const SizedBox(height: 4),
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
           ],
@@ -373,26 +352,17 @@ class _ToolControlCardState extends State<ToolControlCard> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withValues(alpha: 0.6),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            icon,
-            size: 22,
-            color: color,
-          ),
+          Icon(icon, size: 22, color: color),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               message,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -413,10 +383,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
           icon: Icon(icon, size: 25),
           label: Text(
             label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
         ),
       ),
@@ -446,8 +413,8 @@ class _ToolControlCardState extends State<ToolControlCard> {
                   child: Text(
                     tool.name,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 _buildStatusChip(),
@@ -492,8 +459,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color:
-                        colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    color: colorScheme.primaryContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: colorScheme.primary.withValues(alpha: 0.3),
@@ -503,34 +469,26 @@ class _ToolControlCardState extends State<ToolControlCard> {
                     children: [
                       Text(
                         'COMMAND SETPOINT',
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelLarge
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.7,
-                            ),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.7,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         '${_draftPercent.toStringAsFixed(0)}%',
-                        style:
-                            Theme.of(context).textTheme.displaySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _dirty
                             ? 'Not yet applied'
                             : 'Current command: ${tool.requestedValveLabel}',
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: _dirty
-                                      ? Colors.orangeAccent
-                                      : Colors.white70,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: _dirty ? Colors.orangeAccent : Colors.white70,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -566,10 +524,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
                 ),
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('0%'),
-                    Text('100%'),
-                  ],
+                  children: [Text('0%'), Text('100%')],
                 ),
                 const SizedBox(height: 14),
                 SizedBox(
@@ -581,20 +536,15 @@ class _ToolControlCardState extends State<ToolControlCard> {
                         ? const SizedBox(
                             width: 21,
                             height: 21,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(
-                            Icons.send,
-                            size: 24,
-                          ),
+                        : const Icon(Icons.send, size: 24),
                     label: Text(
                       _submitting
                           ? 'SENDING COMMAND...'
                           : _dirty
-                              ? 'APPLY ${_draftPercent.toStringAsFixed(0)}%'
-                              : 'POSITION APPLIED',
+                          ? 'APPLY ${_draftPercent.toStringAsFixed(0)}%'
+                          : 'POSITION APPLIED',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -616,10 +566,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
                       ),
                     ),
                     onPressed: canClose ? _confirmClose : null,
-                    icon: const Icon(
-                      Icons.power_settings_new,
-                      size: 24,
-                    ),
+                    icon: const Icon(Icons.power_settings_new, size: 24),
                     label: const Text(
                       'CLOSE THIS VALVE',
                       style: TextStyle(

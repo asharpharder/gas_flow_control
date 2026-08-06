@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'screens/app_shell.dart';
+import 'services/demo_gas_service.dart';
 import 'services/gas_api.dart';
+import 'services/gas_service.dart';
 
 const apiUrl = String.fromEnvironment(
   'GAS_API_URL',
@@ -18,27 +20,30 @@ const operatorId = String.fromEnvironment(
   defaultValue: 'development-operator',
 );
 
+const demoMode = bool.fromEnvironment('DEMO_MODE', defaultValue: false);
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  const api = GasApi(
-    baseUrl: apiUrl,
-    token: apiToken,
-    operatorId: operatorId,
-  );
+  final GasService service;
 
-  runApp(
-    const GasControlApp(api: api),
-  );
+  if (demoMode) {
+    service = DemoGasService(operatorId: operatorId);
+  } else {
+    service = const GasApi(
+      baseUrl: apiUrl,
+      token: apiToken,
+      operatorId: operatorId,
+    );
+  }
+
+  runApp(GasControlApp(api: service));
 }
 
 class GasControlApp extends StatelessWidget {
-  const GasControlApp({
-    required this.api,
-    super.key,
-  });
+  const GasControlApp({required this.api, super.key});
 
-  final GasApi api;
+  final GasService api;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +55,7 @@ class GasControlApp extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'Gas Flow Control',
+      title: demoMode ? 'Gas Flow Control Demo' : 'Gas Flow Control',
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.dark,
       theme: ThemeData(
@@ -73,9 +78,7 @@ class GasControlApp extends StatelessWidget {
             fontWeight: FontWeight.bold,
             letterSpacing: 0.2,
           ),
-          iconTheme: const IconThemeData(
-            size: 26,
-          ),
+          iconTheme: const IconThemeData(size: 26),
         ),
         cardTheme: CardThemeData(
           elevation: 2,
@@ -84,51 +87,39 @@ class GasControlApp extends StatelessWidget {
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
-            side: BorderSide(
-              color: Colors.white.withValues(alpha: 0.08),
-            ),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
           elevation: 0,
           backgroundColor: const Color(0xFF151719),
           indicatorColor: colorScheme.primary.withValues(alpha: 0.22),
-          iconTheme: WidgetStateProperty.resolveWith(
-            (states) {
-              if (states.contains(WidgetState.selected)) {
-                return IconThemeData(
-                  color: colorScheme.primary,
-                  size: 30,
-                );
-              }
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return IconThemeData(color: colorScheme.primary, size: 30);
+            }
 
-              return IconThemeData(
-                color: Colors.white.withValues(alpha: 0.72),
-                size: 28,
-              );
-            },
-          ),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) {
-              return TextStyle(
-                color: states.contains(WidgetState.selected)
-                    ? colorScheme.primary
-                    : Colors.white.withValues(alpha: 0.72),
-                fontSize: 13,
-                fontWeight: states.contains(WidgetState.selected)
-                    ? FontWeight.bold
-                    : FontWeight.w600,
-              );
-            },
-          ),
+            return IconThemeData(
+              color: Colors.white.withValues(alpha: 0.72),
+              size: 28,
+            );
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            return TextStyle(
+              color: states.contains(WidgetState.selected)
+                  ? colorScheme.primary
+                  : Colors.white.withValues(alpha: 0.72),
+              fontSize: 13,
+              fontWeight: states.contains(WidgetState.selected)
+                  ? FontWeight.bold
+                  : FontWeight.w600,
+            );
+          }),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
             minimumSize: const Size(48, 52),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -142,10 +133,7 @@ class GasControlApp extends StatelessWidget {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(48, 52),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-              vertical: 14,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
             textStyle: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -169,9 +157,7 @@ class GasControlApp extends StatelessWidget {
           ),
         ),
         iconButtonTheme: IconButtonThemeData(
-          style: IconButton.styleFrom(
-            minimumSize: const Size(48, 48),
-          ),
+          style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
         ),
         sliderTheme: SliderThemeData(
           trackHeight: 7,
@@ -179,12 +165,8 @@ class GasControlApp extends StatelessWidget {
           inactiveTrackColor: Colors.white.withValues(alpha: 0.18),
           thumbColor: colorScheme.primary,
           overlayColor: colorScheme.primary.withValues(alpha: 0.18),
-          thumbShape: const RoundSliderThumbShape(
-            enabledThumbRadius: 12,
-          ),
-          overlayShape: const RoundSliderOverlayShape(
-            overlayRadius: 24,
-          ),
+          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 12),
+          overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
         ),
         progressIndicatorTheme: ProgressIndicatorThemeData(
           color: colorScheme.primary,
@@ -223,53 +205,25 @@ class GasControlApp extends StatelessWidget {
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white.withValues(alpha: 0.06),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(
-              color: Colors.white.withValues(alpha: 0.18),
-            ),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
-            borderSide: BorderSide(
-              color: colorScheme.primary,
-              width: 2,
-            ),
+            borderSide: BorderSide(color: colorScheme.primary, width: 2),
           ),
         ),
         textTheme: const TextTheme(
-          displaySmall: TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.bold,
-          ),
-          headlineSmall: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-          titleLarge: TextStyle(
-            fontSize: 21,
-            fontWeight: FontWeight.bold,
-          ),
-          titleMedium: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
-          bodyLarge: TextStyle(
-            fontSize: 17,
-          ),
-          bodyMedium: TextStyle(
-            fontSize: 15,
-          ),
-          bodySmall: TextStyle(
-            fontSize: 13,
-          ),
-          labelLarge: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.bold,
-          ),
+          displaySmall: TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+          headlineSmall: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          titleLarge: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
+          titleMedium: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+          bodyLarge: TextStyle(fontSize: 17),
+          bodyMedium: TextStyle(fontSize: 15),
+          bodySmall: TextStyle(fontSize: 13),
+          labelLarge: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
         ),
       ),
       home: AppShell(api: api),

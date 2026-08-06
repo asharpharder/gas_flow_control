@@ -4,8 +4,9 @@ import 'package:http/http.dart' as http;
 
 import '../models/command_audit_entry.dart';
 import '../models/gas_tool.dart';
+import 'gas_service.dart';
 
-class GasApi {
+class GasApi implements GasService {
   const GasApi({
     required this.baseUrl,
     required this.token,
@@ -31,6 +32,7 @@ class GasApi {
     return Uri.parse('$normalizedBaseUrl$path');
   }
 
+  @override
   Future<List<GasTool>> fetchTools() async {
     final response = await http
         .get(_uri('/tools'), headers: _headers)
@@ -41,6 +43,7 @@ class GasApi {
     return _decodeToolList(response.body);
   }
 
+  @override
   Future<GasTool> setValvePosition({
     required int toolId,
     required double requestedPercent,
@@ -61,6 +64,7 @@ class GasApi {
     return _decodeTool(response.body);
   }
 
+  @override
   Future<GasTool> closeValve({required int toolId}) async {
     final response = await http
         .post(
@@ -75,6 +79,7 @@ class GasApi {
     return _decodeTool(response.body);
   }
 
+  @override
   Future<List<GasTool>> closeAll() async {
     final response = await http
         .post(
@@ -89,6 +94,7 @@ class GasApi {
     return _decodeToolList(response.body);
   }
 
+  @override
   Future<List<CommandAuditEntry>> fetchAuditHistory({int limit = 100}) async {
     final auditUri = _uri(
       '/audit',

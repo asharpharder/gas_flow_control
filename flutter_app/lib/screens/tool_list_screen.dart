@@ -3,16 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/gas_tool.dart';
-import '../services/gas_api.dart';
+import '../services/gas_service.dart';
 import '../widgets/tool_control_card.dart';
 
 class ToolListScreen extends StatefulWidget {
-  const ToolListScreen({
-    required this.api,
-    super.key,
-  });
+  const ToolListScreen({required this.api, super.key});
 
-  final GasApi api;
+  final GasService api;
 
   @override
   State<ToolListScreen> createState() => _ToolListScreenState();
@@ -185,9 +182,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
     }
 
     try {
-      final updatedTool = await widget.api.closeValve(
-        toolId: tool.toolId,
-      );
+      final updatedTool = await widget.api.closeValve(toolId: tool.toolId);
 
       _replaceTool(updatedTool);
 
@@ -196,11 +191,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${tool.name}: close command accepted',
-          ),
-        ),
+        SnackBar(content: Text('${tool.name}: close command accepted')),
       );
     } catch (error) {
       _recordCommandFailure(error);
@@ -229,9 +220,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Close-all command accepted'),
-        ),
+        const SnackBar(content: Text('Close-all command accepted')),
       );
     } catch (error) {
       _recordCommandFailure(error);
@@ -250,10 +239,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
             size: 42,
             color: Theme.of(dialogContext).colorScheme.error,
           ),
-          title: const Text(
-            'Close all valves?',
-            textAlign: TextAlign.center,
-          ),
+          title: const Text('Close all valves?', textAlign: TextAlign.center),
           content: const Text(
             'This sends a software close command to all six controllers.\n\n'
             'This action does not replace a physical emergency stop or '
@@ -270,10 +256,8 @@ class _ToolListScreenState extends State<ToolListScreen> {
             ),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor:
-                    Theme.of(dialogContext).colorScheme.error,
-                foregroundColor:
-                    Theme.of(dialogContext).colorScheme.onError,
+                backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                foregroundColor: Theme.of(dialogContext).colorScheme.onError,
               ),
               onPressed: () {
                 Navigator.of(dialogContext).pop(true);
@@ -313,10 +297,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$error'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('$error'), backgroundColor: Colors.red),
       );
     } finally {
       if (mounted) {
@@ -343,9 +324,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
         _tools[index] = updatedTool;
       } else {
         _tools.add(updatedTool);
-        _tools.sort(
-          (a, b) => a.toolId.compareTo(b.toolId),
-        );
+        _tools.sort((a, b) => a.toolId.compareTo(b.toolId));
       }
 
       _lastSuccessfulRefresh = receivedAt;
@@ -373,9 +352,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
     }
 
     final difference = _now.difference(lastRefresh);
-    final seconds = difference.inSeconds < 0
-        ? 0
-        : difference.inSeconds;
+    final seconds = difference.inSeconds < 0 ? 0 : difference.inSeconds;
 
     if (seconds == 0) {
       return 'just now';
@@ -422,17 +399,10 @@ class _ToolListScreenState extends State<ToolListScreen> {
       child: Container(
         width: double.infinity,
         color: color.withValues(alpha: 0.18),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: color,
-              size: 30,
-            ),
+            Icon(icon, color: color, size: 30),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -446,10 +416,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    message,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text(message, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
             ),
@@ -461,9 +428,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
 
   Widget _buildToolBody() {
     if (_initialLoading && _tools.isEmpty) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (_tools.isEmpty && _connectionError != null) {
@@ -473,25 +438,15 @@ class _ToolListScreenState extends State<ToolListScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.cloud_off,
-                size: 64,
-                color: Colors.redAccent,
-              ),
+              const Icon(Icons.cloud_off, size: 64, color: Colors.redAccent),
               const SizedBox(height: 16),
               const Text(
                 'Unable to connect to the controller',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              SelectableText(
-                _connectionError!,
-                textAlign: TextAlign.center,
-              ),
+              SelectableText(_connectionError!, textAlign: TextAlign.center),
               const SizedBox(height: 20),
               SizedBox(
                 height: 52,
@@ -524,28 +479,18 @@ class _ToolListScreenState extends State<ToolListScreen> {
       onRefresh: _loadTools,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(
-          12,
-          12,
-          12,
-          20,
-        ),
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
         itemCount: _tools.length,
         itemBuilder: (context, index) {
           final tool = _tools[index];
 
           return ToolControlCard(
-            key: ValueKey(
-              '${tool.toolId}-$_cardResetVersion',
-            ),
+            key: ValueKey('${tool.toolId}-$_cardResetVersion'),
             tool: tool,
             commandsEnabled: _commandsEnabled,
             commandsDisabledReason: _commandsDisabledReason,
             onApply: (requestedPercent) {
-              return _applyValvePosition(
-                tool,
-                requestedPercent,
-              );
+              return _applyValvePosition(tool, requestedPercent);
             },
             onClose: () {
               return _closeValve(tool);
@@ -563,18 +508,11 @@ class _ToolListScreenState extends State<ToolListScreen> {
       top: false,
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(
-          12,
-          10,
-          12,
-          12,
-        ),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
         decoration: BoxDecoration(
           color: colorScheme.surface,
           border: Border(
-            top: BorderSide(
-              color: Theme.of(context).dividerColor,
-            ),
+            top: BorderSide(color: Theme.of(context).dividerColor),
           ),
           boxShadow: const [
             BoxShadow(
@@ -590,10 +528,12 @@ class _ToolListScreenState extends State<ToolListScreen> {
             style: FilledButton.styleFrom(
               backgroundColor: colorScheme.error,
               foregroundColor: colorScheme.onError,
-              disabledBackgroundColor:
-                  colorScheme.error.withValues(alpha: 0.25),
-              disabledForegroundColor:
-                  colorScheme.onSurface.withValues(alpha: 0.45),
+              disabledBackgroundColor: colorScheme.error.withValues(
+                alpha: 0.25,
+              ),
+              disabledForegroundColor: colorScheme.onSurface.withValues(
+                alpha: 0.45,
+              ),
               textStyle: const TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
@@ -603,25 +543,16 @@ class _ToolListScreenState extends State<ToolListScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
             ),
-            onPressed: _commandsEnabled
-                ? _confirmCloseAll
-                : null,
+            onPressed: _commandsEnabled ? _confirmCloseAll : null,
             icon: _closingAll
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(
-                    Icons.power_settings_new,
-                    size: 26,
-                  ),
+                : const Icon(Icons.power_settings_new, size: 26),
             label: Text(
-              _closingAll
-                  ? 'CLOSING ALL VALVES...'
-                  : 'CLOSE ALL VALVES',
+              _closingAll ? 'CLOSING ALL VALVES...' : 'CLOSE ALL VALVES',
             ),
           ),
         ),
@@ -635,9 +566,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
       appBar: AppBar(
         title: const Text(
           'Gas Flow Control',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
@@ -651,9 +580,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
           ),
@@ -662,9 +589,7 @@ class _ToolListScreenState extends State<ToolListScreen> {
       body: Column(
         children: [
           _buildConnectionBanner(),
-          Expanded(
-            child: _buildToolBody(),
-          ),
+          Expanded(child: _buildToolBody()),
           _buildCloseAllButton(),
         ],
       ),

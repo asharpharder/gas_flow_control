@@ -1,8 +1,4 @@
-enum GasToolStatus {
-  online,
-  offline,
-  fault,
-}
+enum GasToolStatus { online, offline, fault }
 
 class GasTool {
   const GasTool({
@@ -104,20 +100,14 @@ class GasTool {
         json,
         'actual_valve_percent',
       ).clamp(0.0, 100.0),
-      measuredFlowCfh: _readDouble(
-        json,
-        'measured_flow_cfh',
-      ),
+      measuredFlowCfh: _readDouble(json, 'measured_flow_cfh'),
       connected: _readBool(json, 'connected'),
       fault: _readNullableString(json, 'fault'),
       updatedAt: _readDateTime(json, 'updated_at'),
     );
   }
 
-  static int _readInt(
-    Map<String, dynamic> json,
-    String key,
-  ) {
+  static int _readInt(Map<String, dynamic> json, String key) {
     final value = json[key];
 
     if (value is int) {
@@ -133,10 +123,7 @@ class GasTool {
     );
   }
 
-  static double _readDouble(
-    Map<String, dynamic> json,
-    String key,
-  ) {
+  static double _readDouble(Map<String, dynamic> json, String key) {
     final value = json[key];
 
     if (value is num) {
@@ -148,10 +135,7 @@ class GasTool {
     );
   }
 
-  static String _readString(
-    Map<String, dynamic> json,
-    String key,
-  ) {
+  static String _readString(Map<String, dynamic> json, String key) {
     final value = json[key];
 
     if (value is String && value.trim().isNotEmpty) {
@@ -163,10 +147,7 @@ class GasTool {
     );
   }
 
-  static String? _readNullableString(
-    Map<String, dynamic> json,
-    String key,
-  ) {
+  static String? _readNullableString(Map<String, dynamic> json, String key) {
     final value = json[key];
 
     if (value == null) {
@@ -184,10 +165,7 @@ class GasTool {
     );
   }
 
-  static bool _readBool(
-    Map<String, dynamic> json,
-    String key,
-  ) {
+  static bool _readBool(Map<String, dynamic> json, String key) {
     final value = json[key];
 
     if (value is bool) {
@@ -199,10 +177,7 @@ class GasTool {
     );
   }
 
-  static DateTime _readDateTime(
-    Map<String, dynamic> json,
-    String key,
-  ) {
+  static DateTime _readDateTime(Map<String, dynamic> json, String key) {
     final value = json[key];
 
     if (value is! String) {
@@ -214,9 +189,7 @@ class GasTool {
     final timestamp = DateTime.tryParse(value);
 
     if (timestamp == null) {
-      throw FormatException(
-        'Unable to parse "$key" timestamp: $value',
-      );
+      throw FormatException('Unable to parse "$key" timestamp: $value');
     }
 
     return timestamp;

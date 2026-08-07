@@ -16,19 +16,60 @@ class SimulatedHardware:
     def __init__(self, tool_count: int = 6) -> None:
         self._lock = asyncio.Lock()
 
-        self._tools: dict[int, ToolTelemetry] = {
-            tool_id: ToolTelemetry(
+        gas_types = [
+            "Argon",
+            "Argon",
+            "75/25 Ar-CO2",
+            "75/25 Ar-CO2",
+            "Helium",
+            "Nitrogen",
+        ]
+
+        starting_pressures = [
+            1850.0,
+            1725.0,
+            1600.0,
+            1450.0,
+            1200.0,
+            950.0,
+        ]
+
+        target_flows = [
+            20.0,
+            22.0,
+            25.0,
+            25.0,
+            28.0,
+            18.0,
+        ]
+
+        self._tools: dict[int, ToolTelemetry] = {}
+
+        for tool_id in range(1, tool_count + 1):
+            index = tool_id - 1
+
+            target_flow = target_flows[index % len(target_flows)]
+
+            self._tools[tool_id] = ToolTelemetry(
                 tool_id=tool_id,
                 name=f"Welding Tool {tool_id}",
+                gas_type=gas_types[index % len(gas_types)],
+                cylinder_pressure_psi=starting_pressures[
+                    index % len(starting_pressures)
+                ],
                 requested_valve_percent=0.0,
                 actual_valve_percent=0.0,
                 measured_flow_cfh=0.0,
+                target_flow_cfh=target_flow,
+                minimum_flow_cfh=max(
+                    0.0,
+                    target_flow - 3.0,
+                ),
+                maximum_flow_cfh=target_flow + 3.0,
                 connected=True,
                 fault=None,
                 updated_at=datetime.now(timezone.utc),
             )
-            for tool_id in range(1, tool_count + 1)
-        }
 
     async def read_all(self) -> list[ToolTelemetry]:
         """Return telemetry for all simulated welding tools."""
@@ -64,11 +105,29 @@ class SimulatedHardware:
                 1,
             )
 
+            # Slowly reduce simulated cylinder pressure while gas is flowing.
+            if tool.measured_flow_cfh > 0:
+                pressure_drop = max(
+                    0.5,
+                    tool.measured_flow_cfh * 0.02,
+                )
+
+                tool.cylinder_pressure_psi = max(
+                    0.0,
+                    round(
+                        tool.cylinder_pressure_psi - pressure_drop,
+                        1,
+                    ),
+                )
+
             tool.updated_at = datetime.now(timezone.utc)
 
             return tool.model_copy(deep=True)
 
-    async def close_valve(self, tool_id: int) -> ToolTelemetry:
+    async def close_valve(
+        self,
+        tool_id: int,
+    ) -> ToolTelemetry:
         """Command one valve to the fully closed position."""
 
         return await self.set_valve_position(
@@ -93,7 +152,10 @@ class SimulatedHardware:
                 for tool in self._tools.values()
             ]
 
-    def _get_tool(self, tool_id: int) -> ToolTelemetry:
+    def _get_tool(
+        self,
+        tool_id: int,
+    ) -> ToolTelemetry:
         """Return a tool or raise ToolNotFoundError."""
 
         tool = self._tools.get(tool_id)

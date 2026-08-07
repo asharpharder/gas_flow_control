@@ -287,24 +287,21 @@ class _ToolControlCardState extends State<ToolControlCard> {
     }
   }
 
+  Color _statusColor() {
+    switch (widget.tool.status) {
+      case GasToolStatus.normal:
+        return widget.commandsEnabled ? Colors.green : Colors.orangeAccent;
 
-Color _statusColor() {
-  switch (widget.tool.status) {
-    case GasToolStatus.normal:
-      return widget.commandsEnabled
-          ? Colors.green
-          : Colors.orangeAccent;
+      case GasToolStatus.warning:
+        return Colors.orangeAccent;
 
-    case GasToolStatus.warning:
-      return Colors.orangeAccent;
+      case GasToolStatus.offline:
+        return Colors.redAccent;
 
-    case GasToolStatus.offline:
-      return Colors.redAccent;
-
-    case GasToolStatus.fault:
-      return Colors.redAccent;
+      case GasToolStatus.fault:
+        return Colors.redAccent;
+    }
   }
-}
 
   IconData _statusIcon() {
     switch (widget.tool.status) {
@@ -318,7 +315,7 @@ Color _statusColor() {
 
       case GasToolStatus.offline:
         return Icons.link_off;
-        
+
       case GasToolStatus.fault:
         return Icons.error;
     }
@@ -400,6 +397,110 @@ Color _statusColor() {
     );
   }
 
+  Widget _buildGasInformation() {
+    final tool = widget.tool;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: colorScheme.outline.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.local_fire_department_outlined,
+                color: colorScheme.primary,
+                size: 26,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('GAS', style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      tool.gasType.toUpperCase(),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'CYLINDER',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Text(
+                    tool.cylinderPressureLabel,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'TARGET FLOW',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tool.targetFlowLabel,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 42,
+                color: Theme.of(context).dividerColor,
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'ACCEPTABLE RANGE',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      tool.flowRangeLabel,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDisabledWarning() {
     String message;
 
@@ -433,6 +534,28 @@ Color _statusColor() {
           '${widget.tool.requestedValveLabel}, but the actual position is '
           '${widget.tool.actualValveLabel}. Difference: '
           '${widget.tool.valveDifference.toStringAsFixed(1)}%.',
+    );
+  }
+
+  Widget _buildFlowWarning() {
+    if (!widget.tool.flowOutOfRange) {
+      return const SizedBox.shrink();
+    }
+
+    final tool = widget.tool;
+
+    final message = tool.flowBelowMinimum
+        ? 'Gas flow is below the acceptable range. '
+              'Measured ${tool.measuredFlowLabel}; '
+              'minimum ${tool.minimumFlowCfh.toStringAsFixed(1)} CFH.'
+        : 'Gas flow is above the acceptable range. '
+              'Measured ${tool.measuredFlowLabel}; '
+              'maximum ${tool.maximumFlowCfh.toStringAsFixed(1)} CFH.';
+
+    return _buildWarningPanel(
+      icon: Icons.air,
+      message: message,
+      color: Colors.orangeAccent,
     );
   }
 
@@ -596,6 +719,12 @@ Color _statusColor() {
                   _buildValveMismatchWarning(),
                   const SizedBox(height: 12),
                 ],
+                if (tool.flowOutOfRange) ...[
+                  _buildFlowWarning(),
+                  const SizedBox(height: 12),
+                ],
+                _buildGasInformation(),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     _buildReadingPanel(

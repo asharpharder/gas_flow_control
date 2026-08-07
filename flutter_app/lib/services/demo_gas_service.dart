@@ -9,16 +9,35 @@ class DemoGasService implements GasService {
   DemoGasService({required this.operatorId}) {
     final now = DateTime.now();
 
+    const gasTypes = [
+      'Argon',
+      'Argon',
+      '75/25 Ar-CO2',
+      '75/25 Ar-CO2',
+      'Helium',
+      'Nitrogen',
+    ];
+
+    const startingPressures = [1850.0, 1725.0, 1600.0, 1450.0, 1200.0, 950.0];
+
+    const targetFlows = [20.0, 22.0, 25.0, 25.0, 28.0, 18.0];
+
     _tools.addAll(
       List.generate(6, (index) {
         final toolId = index + 1;
+        final targetFlow = targetFlows[index];
 
         return GasTool(
           toolId: toolId,
           name: 'Welding Tool $toolId',
+          gasType: gasTypes[index],
+          cylinderPressurePsi: startingPressures[index],
           requestedValvePercent: 0,
           actualValvePercent: 0,
           measuredFlowCfh: 0,
+          targetFlowCfh: targetFlow,
+          minimumFlowCfh: max(0, targetFlow - 3),
+          maximumFlowCfh: targetFlow + 3,
           connected: true,
           fault: null,
           updatedAt: now,
@@ -62,9 +81,14 @@ class DemoGasService implements GasService {
     final updated = GasTool(
       toolId: current.toolId,
       name: current.name,
+      gasType: current.gasType,
+      cylinderPressurePsi: current.cylinderPressurePsi,
       requestedValvePercent: requested,
       actualValvePercent: current.actualValvePercent,
       measuredFlowCfh: current.measuredFlowCfh,
+      targetFlowCfh: current.targetFlowCfh,
+      minimumFlowCfh: current.minimumFlowCfh,
+      maximumFlowCfh: current.maximumFlowCfh,
       connected: current.connected,
       fault: current.fault,
       updatedAt: now,
@@ -93,9 +117,14 @@ class DemoGasService implements GasService {
     final updated = GasTool(
       toolId: current.toolId,
       name: current.name,
+      gasType: current.gasType,
+      cylinderPressurePsi: current.cylinderPressurePsi,
       requestedValvePercent: 0,
       actualValvePercent: 0,
       measuredFlowCfh: 0,
+      targetFlowCfh: current.targetFlowCfh,
+      minimumFlowCfh: current.minimumFlowCfh,
+      maximumFlowCfh: current.maximumFlowCfh,
       connected: current.connected,
       fault: current.fault,
       updatedAt: now,
@@ -125,9 +154,14 @@ class DemoGasService implements GasService {
       _tools[index] = GasTool(
         toolId: current.toolId,
         name: current.name,
+        gasType: current.gasType,
+        cylinderPressurePsi: current.cylinderPressurePsi,
         requestedValvePercent: 0,
         actualValvePercent: 0,
         measuredFlowCfh: 0,
+        targetFlowCfh: current.targetFlowCfh,
+        minimumFlowCfh: current.minimumFlowCfh,
+        maximumFlowCfh: current.maximumFlowCfh,
         connected: current.connected,
         fault: current.fault,
         updatedAt: now,
@@ -175,16 +209,28 @@ class DemoGasService implements GasService {
       final actual = (current.actualValvePercent + movement).clamp(0.0, 100.0);
 
       final baseFlow = actual * 0.62;
+
       final variation = actual <= 0 ? 0.0 : (_random.nextDouble() - 0.5) * 0.8;
 
       final flow = max(0.0, baseFlow + variation);
 
+      var pressure = current.cylinderPressurePsi;
+
+      if (flow > 0) {
+        pressure = max(0.0, pressure - max(0.2, flow * 0.004));
+      }
+
       _tools[index] = GasTool(
         toolId: current.toolId,
         name: current.name,
+        gasType: current.gasType,
+        cylinderPressurePsi: pressure,
         requestedValvePercent: current.requestedValvePercent,
         actualValvePercent: actual,
         measuredFlowCfh: flow,
+        targetFlowCfh: current.targetFlowCfh,
+        minimumFlowCfh: current.minimumFlowCfh,
+        maximumFlowCfh: current.maximumFlowCfh,
         connected: current.connected,
         fault: current.fault,
         updatedAt: now,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/gas_tool.dart';
 
@@ -26,14 +27,24 @@ class _ToolControlCardState extends State<ToolControlCard> {
   static const double _adjustmentStep = 5;
 
   late double _draftPercent;
+  late final TextEditingController _setpointController;
+  late final FocusNode _setpointFocusNode;
 
   bool _submitting = false;
   bool _dirty = false;
+  String? _inputError;
 
   @override
   void initState() {
     super.initState();
+
     _draftPercent = widget.tool.requestedValvePercent;
+
+    _setpointController = TextEditingController(
+      text: _draftPercent.toStringAsFixed(0),
+    );
+
+    _setpointFocusNode = FocusNode();
   }
 
   @override
@@ -44,20 +55,83 @@ class _ToolControlCardState extends State<ToolControlCard> {
         widget.tool.requestedValvePercent) {
       _draftPercent = widget.tool.requestedValvePercent;
       _dirty = false;
+      _inputError = null;
+
+      if (!_setpointFocusNode.hasFocus) {
+        _setpointController.text = _draftPercent.toStringAsFixed(0);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _setpointController.dispose();
+    _setpointFocusNode.dispose();
+    super.dispose();
   }
 
   bool get _toolAvailable {
     return widget.commandsEnabled && widget.tool.isOnline && !_submitting;
   }
 
-  void _setDraftPercent(double value) {
+  void _setDraftPercent(double value, {bool updateTextField = true}) {
     final clampedValue = value.clamp(0.0, 100.0);
 
     setState(() {
       _draftPercent = clampedValue;
+
       _dirty = (clampedValue - widget.tool.requestedValvePercent).abs() >= 0.5;
+
+      _inputError = null;
+
+      if (updateTextField) {
+        _setpointController.text = clampedValue.toStringAsFixed(0);
+        _setpointController.selection = TextSelection.collapsed(
+          offset: _setpointController.text.length,
+        );
+      }
     });
+  }
+
+  void _handleSetpointChanged(String value) {
+    if (value.isEmpty) {
+      setState(() {
+        _inputError = 'Enter a value from 0 to 100.';
+        _dirty = false;
+      });
+
+      return;
+    }
+
+    final parsedValue = int.tryParse(value);
+
+    if (parsedValue == null) {
+      setState(() {
+        _inputError = 'Enter a whole number from 0 to 100.';
+        _dirty = false;
+      });
+
+      return;
+    }
+
+    if (parsedValue < 0 || parsedValue > 100) {
+      setState(() {
+        _inputError = 'Setpoint must be between 0% and 100%.';
+        _dirty = false;
+      });
+
+      return;
+    }
+
+    _setDraftPercent(parsedValue.toDouble(), updateTextField: false);
+  }
+
+  void _handleSetpointSubmitted(String value) {
+    _handleSetpointChanged(value);
+
+    if (_inputError == null) {
+      _setpointFocusNode.unfocus();
+    }
   }
 
   void _decreaseDraft() {
@@ -77,9 +151,11 @@ class _ToolControlCardState extends State<ToolControlCard> {
   }
 
   Future<void> _apply() async {
-    if (!_toolAvailable || !_dirty) {
+    if (!_toolAvailable || !_dirty || _inputError != null) {
       return;
     }
+
+    _setpointFocusNode.unfocus();
 
     setState(() {
       _submitting = true;
@@ -94,6 +170,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
 
       setState(() {
         _dirty = false;
+        _inputError = null;
       });
     } catch (error) {
       if (!mounted) {
@@ -119,6 +196,8 @@ class _ToolControlCardState extends State<ToolControlCard> {
     if (!_toolAvailable) {
       return;
     }
+
+    _setpointFocusNode.unfocus();
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -184,6 +263,9 @@ class _ToolControlCardState extends State<ToolControlCard> {
       setState(() {
         _draftPercent = 0;
         _dirty = false;
+        _inputError = null;
+
+        _setpointController.text = '0';
       });
     } catch (error) {
       if (!mounted) {
@@ -209,8 +291,10 @@ class _ToolControlCardState extends State<ToolControlCard> {
     switch (widget.tool.status) {
       case GasToolStatus.online:
         return widget.commandsEnabled ? Colors.green : Colors.orangeAccent;
+
       case GasToolStatus.offline:
         return Colors.redAccent;
+
       case GasToolStatus.fault:
         return Colors.redAccent;
     }
@@ -222,8 +306,10 @@ class _ToolControlCardState extends State<ToolControlCard> {
         return widget.commandsEnabled
             ? Icons.check_circle
             : Icons.warning_amber_rounded;
+
       case GasToolStatus.offline:
         return Icons.link_off;
+
       case GasToolStatus.fault:
         return Icons.error;
     }
@@ -377,16 +463,83 @@ class _ToolControlCardState extends State<ToolControlCard> {
   }) {
     return Expanded(
       child: SizedBox(
-        height: 56,
+        height: 60,
         child: OutlinedButton.icon(
           onPressed: _toolAvailable ? onPressed : null,
-          icon: Icon(icon, size: 25),
+          icon: Icon(icon, size: 28),
           label: Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSetpointInput() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        Text(
+          'ENTER VALVE POSITION',
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.7,
+          ),
+        ),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _setpointController,
+          focusNode: _setpointFocusNode,
+          enabled: _toolAvailable,
+          keyboardType: const TextInputType.numberWithOptions(
+            decimal: false,
+            signed: false,
+          ),
+          textInputAction: TextInputAction.done,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold),
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(3),
+          ],
+          decoration: InputDecoration(
+            hintText: '0',
+            suffixText: '%',
+            suffixStyle: TextStyle(
+              color: colorScheme.primary,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+            errorText: _inputError,
+            helperText: 'Enter a whole number from 0 to 100',
+            helperStyle: Theme.of(context).textTheme.bodySmall,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 18,
+            ),
+          ),
+          onTap: () {
+            _setpointController.selection = TextSelection(
+              baseOffset: 0,
+              extentOffset: _setpointController.text.length,
+            );
+          },
+          onChanged: _handleSetpointChanged,
+          onSubmitted: _handleSetpointSubmitted,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _dirty
+              ? 'New setpoint not yet applied'
+              : 'Current command: ${widget.tool.requestedValveLabel}',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: _dirty ? Colors.orangeAccent : Colors.white70,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -395,7 +548,8 @@ class _ToolControlCardState extends State<ToolControlCard> {
     final tool = widget.tool;
     final colorScheme = Theme.of(context).colorScheme;
 
-    final canApply = _toolAvailable && _dirty;
+    final canApply = _toolAvailable && _dirty && _inputError == null;
+
     final canClose = _toolAvailable && tool.valveIsOpen;
 
     return Card(
@@ -465,33 +619,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
                       color: colorScheme.primary.withValues(alpha: 0.3),
                     ),
                   ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'COMMAND SETPOINT',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.7,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${_draftPercent.toStringAsFixed(0)}%',
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _dirty
-                            ? 'Not yet applied'
-                            : 'Current command: ${tool.requestedValveLabel}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _dirty ? Colors.orangeAccent : Colors.white70,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _buildSetpointInput(),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -509,27 +637,10 @@ class _ToolControlCardState extends State<ToolControlCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Slider(
-                  value: _draftPercent.clamp(0.0, 100.0),
-                  min: 0,
-                  max: 100,
-                  divisions: 100,
-                  label: '${_draftPercent.toStringAsFixed(0)}%',
-                  onChanged: _toolAvailable
-                      ? (value) {
-                          _setDraftPercent(value);
-                        }
-                      : null,
-                ),
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [Text('0%'), Text('100%')],
-                ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 60,
                   child: FilledButton.icon(
                     onPressed: canApply ? _apply : null,
                     icon: _submitting
@@ -542,11 +653,11 @@ class _ToolControlCardState extends State<ToolControlCard> {
                     label: Text(
                       _submitting
                           ? 'SENDING COMMAND...'
-                          : _dirty
+                          : _dirty && _inputError == null
                           ? 'APPLY ${_draftPercent.toStringAsFixed(0)}%'
                           : 'POSITION APPLIED',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -555,7 +666,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
                 const SizedBox(height: 10),
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 60,
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
                       foregroundColor: colorScheme.error,
@@ -570,7 +681,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
                     label: const Text(
                       'CLOSE THIS VALVE',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 17,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

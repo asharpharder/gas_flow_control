@@ -293,7 +293,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
         return widget.commandsEnabled ? Colors.green : Colors.orangeAccent;
 
       case GasToolStatus.adjusting:
-       return Colors.lightBlueAccent;  
+        return Colors.lightBlueAccent;
 
       case GasToolStatus.warning:
         return Colors.orangeAccent;
@@ -312,7 +312,7 @@ class _ToolControlCardState extends State<ToolControlCard> {
         return widget.commandsEnabled
             ? Icons.check_circle
             : Icons.warning_amber_rounded;
-      
+
       case GasToolStatus.adjusting:
         return Icons.sync;
 
@@ -565,6 +565,32 @@ class _ToolControlCardState extends State<ToolControlCard> {
     );
   }
 
+  Widget _buildCylinderPressureWarning() {
+    final tool = widget.tool;
+
+    if (!tool.cylinderPressureWarning) {
+      return const SizedBox.shrink();
+    }
+
+    if (tool.cylinderPressureCritical) {
+      return _buildWarningPanel(
+        icon: Icons.propane_tank,
+        message:
+            'CRITICAL CYLINDER PRESSURE. '
+            '${tool.cylinderPressureLabel} remaining.',
+        color: Colors.redAccent,
+      );
+    }
+
+    return _buildWarningPanel(
+      icon: Icons.propane_tank,
+      message:
+          'LOW CYLINDER PRESSURE. '
+          '${tool.cylinderPressureLabel} remaining.',
+      color: Colors.orangeAccent,
+    );
+  }
+
   Widget _buildWarningPanel({
     required IconData icon,
     required String message,
@@ -729,8 +755,11 @@ class _ToolControlCardState extends State<ToolControlCard> {
                   _buildFlowWarning(),
                   const SizedBox(height: 12),
                 ],
+                if (tool.cylinderPressureWarning) ...[
+                  _buildCylinderPressureWarning(),
+                  const SizedBox(height: 12),
+                ],
                 _buildGasInformation(),
-                const SizedBox(height: 12),
                 Row(
                   children: [
                     _buildReadingPanel(

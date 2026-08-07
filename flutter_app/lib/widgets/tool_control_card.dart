@@ -292,6 +292,9 @@ class _ToolControlCardState extends State<ToolControlCard> {
       case GasToolStatus.normal:
         return widget.commandsEnabled ? Colors.green : Colors.orangeAccent;
 
+      case GasToolStatus.adjusting:
+       return Colors.lightBlueAccent;  
+
       case GasToolStatus.warning:
         return Colors.orangeAccent;
 
@@ -309,6 +312,9 @@ class _ToolControlCardState extends State<ToolControlCard> {
         return widget.commandsEnabled
             ? Icons.check_circle
             : Icons.warning_amber_rounded;
+      
+      case GasToolStatus.adjusting:
+        return Icons.sync;
 
       case GasToolStatus.warning:
         return Icons.warning_amber_rounded;

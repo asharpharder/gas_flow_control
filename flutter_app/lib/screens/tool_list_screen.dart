@@ -34,36 +34,43 @@ class _ToolListScreenState extends State<ToolListScreen> {
 
   int _cardResetVersion = 0;
   int get _normalToolCount {
-  return _tools.where((tool) => tool.isNormal).length;
-}
+    return _tools.where((tool) => tool.isNormal).length;
+  }
 
   int get _warningToolCount {
-  return _tools.where((tool) => tool.hasWarning).length;
-}
+    return _tools.where((tool) => tool.hasWarning).length;
+  }
 
   int get _faultToolCount {
-  return _tools.where((tool) => tool.isFaulted).length;
-}
+    return _tools.where((tool) => tool.isFaulted).length;
+  }
+
+  int get _adjustingToolCount {
+    return _tools.where((tool) => tool.isAdjusting).length;
+  }
 
   int get _offlineToolCount {
-  return _tools.where((tool) => tool.isOffline).length;
-}
-
-GasToolStatus get _systemStatus {
-  if (_faultToolCount > 0) {
-    return GasToolStatus.fault;
+    return _tools.where((tool) => tool.isOffline).length;
   }
 
-  if (_offlineToolCount > 0) {
-    return GasToolStatus.offline;
-  }
+  GasToolStatus get _systemStatus {
+    if (_faultToolCount > 0) {
+      return GasToolStatus.fault;
+    }
 
-  if (_warningToolCount > 0) {
-    return GasToolStatus.warning;
-  }
+    if (_offlineToolCount > 0) {
+      return GasToolStatus.offline;
+    }
 
-  return GasToolStatus.normal;
-}
+    if (_warningToolCount > 0) {
+      return GasToolStatus.warning;
+    }
+
+    if (_adjustingToolCount > 0) {
+      return GasToolStatus.adjusting;
+    }
+    return GasToolStatus.normal;
+  }
 
   bool get _telemetryIsStale {
     final lastRefresh = _lastSuccessfulRefresh;
@@ -396,107 +403,110 @@ GasToolStatus get _systemStatus {
     return '$seconds seconds ago';
   }
 
-Widget _buildSystemStatusBanner() {
-  if (_initialLoading || _tools.isEmpty) {
-    return const SizedBox.shrink();
-  }
+  Widget _buildSystemStatusBanner() {
+    if (_initialLoading || _tools.isEmpty) {
+      return const SizedBox.shrink();
+    }
 
-  late final Color color;
-  late final IconData icon;
-  late final String title;
-  late final String message;
+    late final Color color;
+    late final IconData icon;
+    late final String title;
+    late final String message;
 
-  switch (_systemStatus) {
-    case GasToolStatus.normal:
-      color = Colors.green;
-      icon = Icons.check_circle;
-      title = 'SYSTEM NORMAL';
-      message = 'All $_normalToolCount controllers operating normally.';
+    switch (_systemStatus) {
+      case GasToolStatus.normal:
+        color = Colors.green;
+        icon = Icons.check_circle;
+        title = 'SYSTEM NORMAL';
+        message = 'All $_normalToolCount controllers operating normally.';
 
-    case GasToolStatus.warning:
-      color = Colors.orangeAccent;
-      icon = Icons.warning_amber_rounded;
-      title = 'SYSTEM WARNING';
-      message =
-          '$_warningToolCount controller${_warningToolCount == 1 ? '' : 's'} '
-          'require attention.';
+      case GasToolStatus.adjusting:
+        color = Colors.lightBlueAccent;
+        icon = Icons.sync;
+        title = 'SYSTEM ADJUSTING';
+        message =
+            '$_adjustingToolCount controller${_adjustingToolCount == 1 ? '' : 's'} '
+            'moving to commanded position.';
 
-    case GasToolStatus.offline:
-      color = Colors.redAccent;
-      icon = Icons.link_off;
-      title = 'CONTROLLER OFFLINE';
-      message =
-          '$_offlineToolCount controller${_offlineToolCount == 1 ? '' : 's'} '
-          'offline.';
+      case GasToolStatus.warning:
+        color = Colors.orangeAccent;
+        icon = Icons.warning_amber_rounded;
+        title = 'SYSTEM WARNING';
+        message =
+            '$_warningToolCount controller${_warningToolCount == 1 ? '' : 's'} '
+            'require attention.';
 
-    case GasToolStatus.fault:
-      color = Colors.redAccent;
-      icon = Icons.error;
-      title = 'SYSTEM FAULT';
-      message =
-          '$_faultToolCount controller${_faultToolCount == 1 ? '' : 's'} '
-          'reporting a fault.';
-  }
+      case GasToolStatus.offline:
+        color = Colors.redAccent;
+        icon = Icons.link_off;
+        title = 'CONTROLLER OFFLINE';
+        message =
+            '$_offlineToolCount controller${_offlineToolCount == 1 ? '' : 's'} '
+            'offline.';
 
-  return Semantics(
-    liveRegion: true,
-    label: '$title. $message',
-    child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        border: Border(
-          bottom: BorderSide(
-            color: color.withValues(alpha: 0.45),
+      case GasToolStatus.fault:
+        color = Colors.redAccent;
+        icon = Icons.error;
+        title = 'SYSTEM FAULT';
+        message =
+            '$_faultToolCount controller${_faultToolCount == 1 ? '' : 's'} '
+            'reporting a fault.';
+    }
+
+    return Semantics(
+      liveRegion: true,
+      label: '$title. $message',
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.14),
+          border: Border(
+            bottom: BorderSide(color: color.withValues(alpha: 0.45)),
           ),
         ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 34,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 34),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  '$_normalToolCount normal  •  '
-                  '$_warningToolCount warning  •  '
-                  '$_faultToolCount fault  •  '
-                  '$_offlineToolCount offline',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    '$_normalToolCount normal  •  '
+                    '$_adjustingToolCount adjusting  •  '
+                    '$_warningToolCount warning  •  '
+                    '$_faultToolCount fault  •  '
+                    '$_offlineToolCount offline',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildConnectionBanner() {
     late final Color color;

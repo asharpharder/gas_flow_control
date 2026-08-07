@@ -1,4 +1,10 @@
-enum GasToolStatus { normal, warning, offline, fault }
+enum GasToolStatus {
+  normal,
+  adjusting,
+  warning,
+  offline,
+  fault,
+}
 
 class GasTool {
   const GasTool({
@@ -42,19 +48,30 @@ class GasTool {
   }
 
   bool get valveIsOpen {
-    return requestedValvePercent > 0.1 || actualValvePercent > 0.1;
+    return requestedValvePercent > 0.1 ||
+        actualValvePercent > 0.1;
   }
 
   double get valveDifference {
-    return (requestedValvePercent - actualValvePercent).abs();
+    return (
+      requestedValvePercent - actualValvePercent
+    ).abs();
   }
 
   bool get valvePositionMismatch {
     return valveDifference >= 5;
   }
 
+  bool get isAdjusting {
+    return connected &&
+        !hasFault &&
+        valvePositionMismatch;
+  }
+
   bool get flowMonitoringActive {
-    return valveIsOpen && targetFlowCfh > 0;
+    return valveIsOpen &&
+        targetFlowCfh > 0 &&
+        !isAdjusting;
   }
 
   bool get flowBelowMinimum {
@@ -86,7 +103,11 @@ class GasTool {
       return GasToolStatus.fault;
     }
 
-    if (valvePositionMismatch || flowOutOfRange) {
+    if (isAdjusting) {
+      return GasToolStatus.adjusting;
+    }
+
+    if (flowOutOfRange) {
       return GasToolStatus.warning;
     }
 
@@ -114,13 +135,18 @@ class GasTool {
   }
 
   double get normalizedActualValvePosition {
-    return (actualValvePercent / 100).clamp(0.0, 1.0);
+    return (
+      actualValvePercent / 100
+    ).clamp(0.0, 1.0);
   }
 
   String get statusLabel {
     switch (status) {
       case GasToolStatus.normal:
         return 'NORMAL';
+
+      case GasToolStatus.adjusting:
+        return 'ADJUSTING';
 
       case GasToolStatus.warning:
         return 'WARNING';
@@ -138,11 +164,10 @@ class GasTool {
       case GasToolStatus.normal:
         return 'Operating normally';
 
-      case GasToolStatus.warning:
-        if (valvePositionMismatch) {
-          return 'Valve position mismatch';
-        }
+      case GasToolStatus.adjusting:
+        return 'Valve moving to commanded position';
 
+      case GasToolStatus.warning:
         if (flowBelowMinimum) {
           return 'Gas flow below minimum';
         }
@@ -186,12 +211,26 @@ class GasTool {
     return '${cylinderPressurePsi.toStringAsFixed(0)} PSI';
   }
 
-  factory GasTool.fromJson(Map<String, dynamic> json) {
+  factory GasTool.fromJson(
+    Map<String, dynamic> json,
+  ) {
     return GasTool(
-      toolId: _readInt(json, 'tool_id'),
-      name: _readString(json, 'name'),
-      gasType: _readString(json, 'gas_type'),
-      cylinderPressurePsi: _readDouble(json, 'cylinder_pressure_psi'),
+      toolId: _readInt(
+        json,
+        'tool_id',
+      ),
+      name: _readString(
+        json,
+        'name',
+      ),
+      gasType: _readString(
+        json,
+        'gas_type',
+      ),
+      cylinderPressurePsi: _readDouble(
+        json,
+        'cylinder_pressure_psi',
+      ),
       requestedValvePercent: _readDouble(
         json,
         'requested_valve_percent',
@@ -200,17 +239,41 @@ class GasTool {
         json,
         'actual_valve_percent',
       ).clamp(0.0, 100.0),
-      measuredFlowCfh: _readDouble(json, 'measured_flow_cfh'),
-      targetFlowCfh: _readDouble(json, 'target_flow_cfh'),
-      minimumFlowCfh: _readDouble(json, 'minimum_flow_cfh'),
-      maximumFlowCfh: _readDouble(json, 'maximum_flow_cfh'),
-      connected: _readBool(json, 'connected'),
-      fault: _readNullableString(json, 'fault'),
-      updatedAt: _readDateTime(json, 'updated_at'),
+      measuredFlowCfh: _readDouble(
+        json,
+        'measured_flow_cfh',
+      ),
+      targetFlowCfh: _readDouble(
+        json,
+        'target_flow_cfh',
+      ),
+      minimumFlowCfh: _readDouble(
+        json,
+        'minimum_flow_cfh',
+      ),
+      maximumFlowCfh: _readDouble(
+        json,
+        'maximum_flow_cfh',
+      ),
+      connected: _readBool(
+        json,
+        'connected',
+      ),
+      fault: _readNullableString(
+        json,
+        'fault',
+      ),
+      updatedAt: _readDateTime(
+        json,
+        'updated_at',
+      ),
     );
   }
 
-  static int _readInt(Map<String, dynamic> json, String key) {
+  static int _readInt(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
 
     if (value is int) {
@@ -227,7 +290,10 @@ class GasTool {
     );
   }
 
-  static double _readDouble(Map<String, dynamic> json, String key) {
+  static double _readDouble(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
 
     if (value is num) {
@@ -240,10 +306,14 @@ class GasTool {
     );
   }
 
-  static String _readString(Map<String, dynamic> json, String key) {
+  static String _readString(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
 
-    if (value is String && value.trim().isNotEmpty) {
+    if (value is String &&
+        value.trim().isNotEmpty) {
       return value;
     }
 
@@ -253,7 +323,10 @@ class GasTool {
     );
   }
 
-  static String? _readNullableString(Map<String, dynamic> json, String key) {
+  static String? _readNullableString(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
 
     if (value == null) {
@@ -263,7 +336,9 @@ class GasTool {
     if (value is String) {
       final trimmedValue = value.trim();
 
-      return trimmedValue.isEmpty ? null : trimmedValue;
+      return trimmedValue.isEmpty
+          ? null
+          : trimmedValue;
     }
 
     throw FormatException(
@@ -272,7 +347,10 @@ class GasTool {
     );
   }
 
-  static bool _readBool(Map<String, dynamic> json, String key) {
+  static bool _readBool(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
 
     if (value is bool) {
@@ -285,7 +363,10 @@ class GasTool {
     );
   }
 
-  static DateTime _readDateTime(Map<String, dynamic> json, String key) {
+  static DateTime _readDateTime(
+    Map<String, dynamic> json,
+    String key,
+  ) {
     final value = json[key];
 
     if (value is! String) {
@@ -295,7 +376,9 @@ class GasTool {
       );
     }
 
-    final timestamp = DateTime.tryParse(value);
+    final timestamp = DateTime.tryParse(
+      value,
+    );
 
     if (timestamp == null) {
       throw FormatException(

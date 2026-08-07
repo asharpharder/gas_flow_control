@@ -287,29 +287,38 @@ class _ToolControlCardState extends State<ToolControlCard> {
     }
   }
 
-  Color _statusColor() {
-    switch (widget.tool.status) {
-      case GasToolStatus.online:
-        return widget.commandsEnabled ? Colors.green : Colors.orangeAccent;
 
-      case GasToolStatus.offline:
-        return Colors.redAccent;
+Color _statusColor() {
+  switch (widget.tool.status) {
+    case GasToolStatus.normal:
+      return widget.commandsEnabled
+          ? Colors.green
+          : Colors.orangeAccent;
 
-      case GasToolStatus.fault:
-        return Colors.redAccent;
-    }
+    case GasToolStatus.warning:
+      return Colors.orangeAccent;
+
+    case GasToolStatus.offline:
+      return Colors.redAccent;
+
+    case GasToolStatus.fault:
+      return Colors.redAccent;
   }
+}
 
   IconData _statusIcon() {
     switch (widget.tool.status) {
-      case GasToolStatus.online:
+      case GasToolStatus.normal:
         return widget.commandsEnabled
             ? Icons.check_circle
             : Icons.warning_amber_rounded;
 
+      case GasToolStatus.warning:
+        return Icons.warning_amber_rounded;
+
       case GasToolStatus.offline:
         return Icons.link_off;
-
+        
       case GasToolStatus.fault:
         return Icons.error;
     }

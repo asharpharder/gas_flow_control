@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/gas_service.dart';
 import 'audit_history_screen.dart';
+import 'home_screen.dart';
 import 'tool_list_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -23,6 +24,15 @@ class _AppShellState extends State<AppShell> {
     super.initState();
 
     _screens = [
+      HomeScreen(
+        api: widget.api,
+        onOpenControls: () {
+          _selectScreen(1);
+        },
+        onOpenHistory: () {
+          _selectScreen(2);
+        },
+      ),
       ToolListScreen(api: widget.api),
       AuditHistoryScreen(api: widget.api),
     ];
@@ -68,6 +78,12 @@ class _AppShellState extends State<AppShell> {
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             onDestinationSelected: _selectScreen,
             destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined, size: 28),
+                selectedIcon: Icon(Icons.home, size: 30),
+                label: 'Home',
+                tooltip: 'Home',
+              ),
               NavigationDestination(
                 icon: Icon(Icons.tune_outlined, size: 28),
                 selectedIcon: Icon(Icons.tune, size: 30),

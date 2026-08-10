@@ -134,7 +134,7 @@ async def record_command(
 async def health() -> dict[str, object]:
     return {
         "ok": True,
-        "mode": "simulation",
+        "mode": HARDWARE_MODE,
         "audit_storage": "sqlite",
         "api_version": app.version,
     }

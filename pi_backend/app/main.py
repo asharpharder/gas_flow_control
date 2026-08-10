@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .audit import CommandAuditStore
 from .hardware import SimulatedHardware, ToolNotFoundError
+from .remote_pi_hardware import RemotePiHardware
 from .models import (
     CloseValveRequest,
     CommandAuditEntry,
@@ -70,7 +71,28 @@ app.add_middleware(
 )
 
 
-hardware = SimulatedHardware(tool_count=6)
+HARDWARE_MODE = os.getenv(
+    "GAS_HARDWARE_MODE",
+    "simulation",
+).strip().lower()
+
+
+def create_hardware():
+    if HARDWARE_MODE == "simulation":
+        logger.info("Gas hardware mode: simulation")
+        return SimulatedHardware(tool_count=6)
+
+    if HARDWARE_MODE == "remote_pi":
+        logger.info("Gas hardware mode: remote_pi")
+        return RemotePiHardware(tool_count=6)
+
+    raise RuntimeError(
+        "Unsupported GAS_HARDWARE_MODE: "
+        f"{HARDWARE_MODE}",
+    )
+
+
+hardware = create_hardware()
 audit_store = CommandAuditStore()
 
 

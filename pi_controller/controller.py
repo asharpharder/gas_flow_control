@@ -3,10 +3,12 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+from valve_hardware import SimulatedValveHardware
+
 
 app = FastAPI(
     title="Gas Controller",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 
@@ -18,13 +20,37 @@ class ControllerTelemetry(BaseModel):
     tool_id: int
     name: str
     gas_type: str
-    cylinder_pressure_psi: float = Field(ge=0)
-    requested_valve_percent: float = Field(ge=0, le=100)
-    actual_valve_percent: float = Field(ge=0, le=100)
-    measured_flow_cfh: float = Field(ge=0)
-    target_flow_cfh: float = Field(ge=0)
-    minimum_flow_cfh: float = Field(ge=0)
-    maximum_flow_cfh: float = Field(ge=0)
+
+    cylinder_pressure_psi: float = Field(
+        ge=0,
+    )
+
+    requested_valve_percent: float = Field(
+        ge=0,
+        le=100,
+    )
+
+    actual_valve_percent: float = Field(
+        ge=0,
+        le=100,
+    )
+
+    measured_flow_cfh: float = Field(
+        ge=0,
+    )
+
+    target_flow_cfh: float = Field(
+        ge=0,
+    )
+
+    minimum_flow_cfh: float = Field(
+        ge=0,
+    )
+
+    maximum_flow_cfh: float = Field(
+        ge=0,
+    )
+
     connected: bool
     fault: str | None = None
     updated_at: datetime
@@ -65,47 +91,78 @@ targets = [
 ]
 
 
-tools: dict[int, ControllerTelemetry] = {}
-
-for index in range(6):
-    tool_id = index + 1
-    target = targets[index]
-
-    tools[tool_id] = ControllerTelemetry(
-        tool_id=tool_id,
-        name=f"Welding Tool {tool_id}",
-        gas_type=gas_types[index],
-        cylinder_pressure_psi=pressures[index],
-        requested_valve_percent=0,
-        actual_valve_percent=0,
-        measured_flow_cfh=0,
-        target_flow_cfh=target,
-        minimum_flow_cfh=max(0, target - 3),
-        maximum_flow_cfh=target + 3,
-        connected=True,
-        fault=None,
-        updated_at=utc_now(),
-    )
+hardware = SimulatedValveHardware(
+    tool_count=6,
+)
 
 
-def get_tool(tool_id: int) -> ControllerTelemetry:
-    tool = tools.get(tool_id)
+def get_tool_configuration(
+    tool_id: int,
+) -> tuple[str, float, float]:
+    index = tool_id - 1
 
-    if tool is None:
+    if index < 0 or index >= len(gas_types):
         raise HTTPException(
             status_code=404,
             detail=f"Tool {tool_id} was not found.",
         )
 
-    return tool
+    return (
+        gas_types[index],
+        pressures[index],
+        targets[index],
+    )
+
+
+def build_telemetry(
+    tool_id: int,
+) -> ControllerTelemetry:
+    try:
+        state = hardware.read(tool_id)
+    except KeyError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
+
+    gas_type, pressure, target = get_tool_configuration(
+        tool_id,
+    )
+
+    return ControllerTelemetry(
+        tool_id=tool_id,
+        name=f"Welding Tool {tool_id}",
+        gas_type=gas_type,
+        cylinder_pressure_psi=pressure,
+        requested_valve_percent=(
+            state.requested_percent
+        ),
+        actual_valve_percent=(
+            state.actual_percent
+        ),
+        measured_flow_cfh=(
+            state.measured_flow_cfh
+        ),
+        target_flow_cfh=target,
+        minimum_flow_cfh=max(
+            0.0,
+            target - 3.0,
+        ),
+        maximum_flow_cfh=target + 3.0,
+        connected=state.connected,
+        fault=state.fault,
+        updated_at=state.updated_at,
+    )
 
 
 @app.get("/health")
 def health():
     return {
         "ok": True,
-        "controller": "fake-pi",
-        "tool_count": len(tools),
+        "controller": "GasControlPi",
+        "hardware": "simulated-valve",
+        "tool_count": 6,
+        "api_version": app.version,
     }
 
 
@@ -113,8 +170,12 @@ def health():
     "/tools/{tool_id}",
     response_model=ControllerTelemetry,
 )
-def read_tool(tool_id: int):
-    return get_tool(tool_id)
+def read_tool(
+    tool_id: int,
+):
+    return build_telemetry(
+        tool_id,
+    )
 
 
 @app.post(
@@ -125,34 +186,44 @@ def set_valve(
     tool_id: int,
     command: ValveCommand,
 ):
-    tool = get_tool(tool_id)
+    try:
+        hardware.set_position(
+            tool_id=tool_id,
+            requested_percent=(
+                command.requested_valve_percent
+            ),
+        )
+    except KeyError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
 
-    requested = command.requested_valve_percent
-
-    tool.requested_valve_percent = requested
-    tool.actual_valve_percent = requested
-    tool.measured_flow_cfh = round(
-        requested * 0.40,
-        1,
+    return build_telemetry(
+        tool_id,
     )
-    tool.updated_at = utc_now()
-
-    return tool
 
 
 @app.post(
     "/tools/{tool_id}/close",
     response_model=ControllerTelemetry,
 )
-def close_valve(tool_id: int):
-    tool = get_tool(tool_id)
+def close_valve(
+    tool_id: int,
+):
+    try:
+        hardware.close(
+            tool_id,
+        )
+    except KeyError as error:
+        raise HTTPException(
+            status_code=404,
+            detail=str(error),
+        ) from error
 
-    tool.requested_valve_percent = 0
-    tool.actual_valve_percent = 0
-    tool.measured_flow_cfh = 0
-    tool.updated_at = utc_now()
-
-    return tool
+    return build_telemetry(
+        tool_id,
+    )
 
 
 @app.post(
@@ -160,13 +231,10 @@ def close_valve(tool_id: int):
     response_model=list[ControllerTelemetry],
 )
 def close_all():
-    current_time = utc_now()
+    hardware.close_all()
 
-    for tool in tools.values():
-        tool.requested_valve_percent = 0
-        tool.actual_valve_percent = 0
-        tool.measured_flow_cfh = 0
-        tool.updated_at = current_time
-
-    return list(tools.values())
+    return [
+        build_telemetry(tool_id)
+        for tool_id in range(1, 7)
+    ]
     

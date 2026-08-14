@@ -5,6 +5,13 @@ import 'audit_history_screen.dart';
 import 'home_screen.dart';
 import 'tool_list_screen.dart';
 
+const accessPin = String.fromEnvironment('ACCESS_PIN', defaultValue: '123456');
+
+const harderEmailDomain = String.fromEnvironment(
+  'HARDER_EMAIL_DOMAIN',
+  defaultValue: 'harder.com',
+);
+
 class AppShell extends StatefulWidget {
   const AppShell({required this.api, super.key});
 
@@ -17,28 +24,53 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
 
-  late final List<Widget> _screens;
+  bool _isSignedIn = false;
+  String? _signedInEmail;
 
-  @override
-  void initState() {
-    super.initState();
+  bool _signIn({required String email, required String pin}) {
+    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedDomain = harderEmailDomain.trim().toLowerCase();
 
-    _screens = [
-      HomeScreen(
-        api: widget.api,
-        onOpenControls: () {
-          _selectScreen(1);
-        },
-        onOpenHistory: () {
-          _selectScreen(2);
-        },
-      ),
-      ToolListScreen(api: widget.api),
-      AuditHistoryScreen(api: widget.api),
-    ];
+    final emailParts = normalizedEmail.split('@');
+
+    final validEmail =
+        emailParts.length == 2 &&
+        emailParts.first.isNotEmpty &&
+        emailParts.last == normalizedDomain;
+
+    final validPin =
+        pin.length == 6 && RegExp(r'^\d{6}$').hasMatch(pin) && pin == accessPin;
+
+    if (!validEmail || !validPin) {
+      return false;
+    }
+
+    setState(() {
+      _isSignedIn = true;
+      _signedInEmail = normalizedEmail;
+      _selectedIndex = 0;
+    });
+
+    return true;
+  }
+
+  void _signOut() {
+    setState(() {
+      _isSignedIn = false;
+      _signedInEmail = null;
+      _selectedIndex = 0;
+    });
   }
 
   void _selectScreen(int index) {
+    if (!_isSignedIn) {
+      return;
+    }
+
+    if (index < 0 || index > 2) {
+      return;
+    }
+
     if (index == _selectedIndex) {
       return;
     }
@@ -52,8 +84,32 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
+    final homeScreen = HomeScreen(
+      api: widget.api,
+      isSignedIn: _isSignedIn,
+      signedInEmail: _signedInEmail,
+      onSignIn: _signIn,
+      onSignOut: _signOut,
+      onOpenControls: () {
+        _selectScreen(1);
+      },
+      onOpenHistory: () {
+        _selectScreen(2);
+      },
+    );
+
+    if (!_isSignedIn) {
+      return Scaffold(body: homeScreen);
+    }
+
+    final screens = <Widget>[
+      homeScreen,
+      ToolListScreen(api: widget.api),
+      AuditHistoryScreen(api: widget.api),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _screens),
+      body: IndexedStack(index: _selectedIndex, children: screens),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/gas_tool.dart';
 import '../services/gas_service.dart';
@@ -8,12 +9,23 @@ import '../services/gas_service.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     required this.api,
+    required this.isSignedIn,
+    required this.signedInEmail,
+    required this.onSignIn,
+    required this.onSignOut,
     required this.onOpenControls,
     required this.onOpenHistory,
     super.key,
   });
 
   final GasService api;
+
+  final bool isSignedIn;
+  final String? signedInEmail;
+
+  final bool Function({required String email, required String pin}) onSignIn;
+
+  final VoidCallback onSignOut;
   final VoidCallback onOpenControls;
   final VoidCallback onOpenHistory;
 
@@ -26,15 +38,57 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final List<GasTool> _tools = [];
 
+  final TextEditingController _emailController = TextEditingController();
+
+  final TextEditingController _pinController = TextEditingController();
+
   Timer? _refreshTimer;
 
   bool _loading = true;
   bool _requestInProgress = false;
   bool _connectionFailed = false;
 
+  String? _loginError;
+
   @override
   void initState() {
     super.initState();
+
+    if (widget.isSignedIn) {
+      _startControllerMonitoring();
+    }
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (!oldWidget.isSignedIn && widget.isSignedIn) {
+      _startControllerMonitoring();
+    }
+
+    if (oldWidget.isSignedIn && !widget.isSignedIn) {
+      _stopControllerMonitoring();
+
+      _tools.clear();
+
+      _loading = true;
+      _connectionFailed = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+
+    _emailController.dispose();
+    _pinController.dispose();
+
+    super.dispose();
+  }
+
+  void _startControllerMonitoring() {
+    _refreshTimer?.cancel();
 
     unawaited(_loadTools());
 
@@ -43,14 +97,37 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  @override
-  void dispose() {
+  void _stopControllerMonitoring() {
     _refreshTimer?.cancel();
-    super.dispose();
+    _refreshTimer = null;
+  }
+
+  void _attemptSignIn() {
+    FocusScope.of(context).unfocus();
+
+    final email = _emailController.text.trim();
+    final pin = _pinController.text.trim();
+
+    final success = widget.onSignIn(email: email, pin: pin);
+
+    if (success) {
+      setState(() {
+        _loginError = null;
+      });
+
+      _pinController.clear();
+
+      return;
+    }
+
+    setState(() {
+      _loginError =
+          'Unable to sign in. Check your Harder email and 6-digit PIN.';
+    });
   }
 
   Future<void> _loadTools() async {
-    if (_requestInProgress) {
+    if (!widget.isSignedIn || _requestInProgress) {
       return;
     }
 
@@ -196,6 +273,107 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Widget _buildLogin() {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            color: colorScheme.primary.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Icon(Icons.lock_outline, size: 46, color: colorScheme.primary),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'GAS FLOW CONTROL',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'AUTHORIZED ACCESS',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 32),
+        TextField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.none,
+          decoration: const InputDecoration(
+            labelText: 'Harder Email',
+            hintText: 'employee@harder.com',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.email_outlined),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _pinController,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          textInputAction: TextInputAction.done,
+          maxLength: 6,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(6),
+          ],
+          onSubmitted: (_) {
+            _attemptSignIn();
+          },
+          decoration: const InputDecoration(
+            labelText: '6-Digit PIN',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.pin_outlined),
+            counterText: '',
+          ),
+        ),
+        if (_loginError != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _loginError!,
+            style: const TextStyle(
+              color: Colors.redAccent,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: FilledButton.icon(
+            onPressed: _attemptSignIn,
+            icon: const Icon(Icons.login, size: 26),
+            label: const Text(
+              'SIGN IN',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Access is limited to authorized personnel.',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.white60),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   Widget _buildSystemSummary() {
     if (_loading && _tools.isEmpty) {
       return const Padding(
@@ -256,10 +434,95 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSignedInHome() {
     final colorScheme = Theme.of(context).colorScheme;
 
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 88,
+          height: 88,
+          decoration: BoxDecoration(
+            color: colorScheme.primary.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Icon(
+            Icons.precision_manufacturing_outlined,
+            size: 48,
+            color: colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'GAS FLOW CONTROL',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Version 1.1',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: colorScheme.primary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Signed in as ${widget.signedInEmail ?? ''}',
+          style: Theme.of(context).textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 24),
+        _buildSystemSummary(),
+        const SizedBox(height: 28),
+        SizedBox(
+          width: double.infinity,
+          height: 64,
+          child: FilledButton.icon(
+            onPressed: widget.onOpenControls,
+            icon: const Icon(Icons.tune, size: 28),
+            label: const Text(
+              'OPEN CONTROLS',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          height: 60,
+          child: OutlinedButton.icon(
+            onPressed: widget.onOpenHistory,
+            icon: const Icon(Icons.history, size: 26),
+            label: const Text(
+              'VIEW COMMAND HISTORY',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(height: 22),
+        TextButton.icon(
+          onPressed: widget.onSignOut,
+          icon: const Icon(Icons.logout),
+          label: const Text('SIGN OUT'),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Field review build',
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: Colors.white60),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -273,82 +536,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 560),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(22),
-                    ),
-                    child: Icon(
-                      Icons.precision_manufacturing_outlined,
-                      size: 48,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'GAS FLOW CONTROL',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Version 1.1',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  _buildSystemSummary(),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 64,
-                    child: FilledButton.icon(
-                      onPressed: widget.onOpenControls,
-                      icon: const Icon(Icons.tune, size: 28),
-                      label: const Text(
-                        'OPEN CONTROLS',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 60,
-                    child: OutlinedButton.icon(
-                      onPressed: widget.onOpenHistory,
-                      icon: const Icon(Icons.history, size: 26),
-                      label: const Text(
-                        'VIEW COMMAND HISTORY',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                  Text(
-                    'Field review build',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: Colors.white60),
-                  ),
-                ],
-              ),
+              child: widget.isSignedIn ? _buildSignedInHome() : _buildLogin(),
             ),
           ),
         ),

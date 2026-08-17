@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gas-flow-control-v3';
+const CACHE_NAME = 'gas-flow-control-v4';
 
 const CORE_FILES = [
   './',
@@ -79,41 +79,48 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      caches.match('./index.html').then((cached) => {
-        return (
-          cached ||
-          fetch(event.request)
-        );
-      }),
+      caches
+        .match('./index.html', {
+          ignoreSearch: true,
+        })
+        .then((cached) => {
+          if (cached) {
+            return cached;
+          }
+
+          return fetch(event.request);
+        }),
     );
 
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
+    caches
+      .match(event.request, {
+        ignoreSearch: true,
+      })
+      .then((cached) => {
+        if (cached) {
+          return cached;
+        }
 
-      return fetch(event.request)
-        .then((response) => {
-          if (
-            response &&
-            response.status === 200
-          ) {
-            const copy = response.clone();
-
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(
-                event.request,
-                copy,
-              );
-            });
+        return fetch(event.request).then((response) => {
+          if (!response || response.status !== 200) {
+            return response;
           }
+
+          const copy = response.clone();
+
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(
+              event.request,
+              copy,
+            );
+          });
 
           return response;
         });
-    }),
+      }),
   );
 });

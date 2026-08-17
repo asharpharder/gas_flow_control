@@ -14,7 +14,11 @@ async function registerOfflineServiceWorker() {
       },
     );
 
-    console.log('Gas Flow Control offline service worker registered.');
+    await navigator.serviceWorker.ready;
+
+    console.log(
+      'Gas Flow Control offline service worker ready.',
+    );
   } catch (error) {
     console.error(
       'Unable to register offline service worker:',
@@ -23,6 +27,14 @@ async function registerOfflineServiceWorker() {
   }
 }
 
-registerOfflineServiceWorker();
+async function startFlutter() {
+  await registerOfflineServiceWorker();
 
-_flutter.loader.load();
+  _flutter.loader.load({
+    config: {
+      canvasKitBaseUrl: 'canvaskit/',
+    },
+  });
+}
+
+startFlutter();

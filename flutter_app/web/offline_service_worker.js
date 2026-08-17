@@ -1,16 +1,17 @@
-const CACHE_NAME = 'gas-flow-control-v1';
+const CACHE_NAME = 'gas-flow-control-v2';
 
-const APP_SHELL = [
+const CORE_FILES = [
   './',
   './index.html',
   './flutter_bootstrap.js',
+  './main.dart.js',
   './manifest.json',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(APP_SHELL);
+      return cache.addAll(CORE_FILES);
     }),
   );
 
@@ -19,9 +20,9 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((names) => {
       return Promise.all(
-        cacheNames
+        names
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name)),
       );
@@ -36,9 +37,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const requestUrl = new URL(event.request.url);
+  const url = new URL(event.request.url);
 
-  if (requestUrl.origin !== self.location.origin) {
+  if (url.origin !== self.location.origin) {
     return;
   }
 
@@ -61,24 +62,27 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
+    caches.open(CACHE_NAME).then(async (cache) => {
+      const cached = await cache.match(event.request);
+
+      if (cached) {
+        return cached;
       }
 
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200) {
-          return response;
+      try {
+        const response = await fetch(event.request);
+
+        if (response && response.status === 200) {
+          cache.put(
+            event.request,
+            response.clone(),
+          );
         }
 
-        const copy = response.clone();
-
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, copy);
-        });
-
         return response;
-      });
+      } catch (error) {
+        return cached;
+      }
     }),
   );
 });

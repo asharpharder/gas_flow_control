@@ -1,11 +1,45 @@
-const CACHE_NAME = 'gas-flow-control-v2';
+const CACHE_NAME = 'gas-flow-control-v3';
 
 const CORE_FILES = [
   './',
   './index.html',
+  './flutter.js',
   './flutter_bootstrap.js',
   './main.dart.js',
   './manifest.json',
+  './version.json',
+
+  './favicon.png',
+
+  './icons/Icon-192.png',
+  './icons/Icon-512.png',
+  './icons/Icon-maskable-192.png',
+  './icons/Icon-maskable-512.png',
+
+  './assets/AssetManifest.bin',
+  './assets/AssetManifest.bin.json',
+  './assets/FontManifest.json',
+
+  './assets/fonts/MaterialIcons-Regular.otf',
+  './assets/packages/cupertino_icons/assets/CupertinoIcons.ttf',
+
+  './assets/shaders/ink_sparkle.frag',
+  './assets/shaders/stretch_effect.frag',
+
+  './canvaskit/canvaskit.js',
+  './canvaskit/canvaskit.wasm',
+  './canvaskit/skwasm.js',
+  './canvaskit/skwasm.wasm',
+  './canvaskit/skwasm_heavy.js',
+  './canvaskit/skwasm_heavy.wasm',
+  './canvaskit/wimp.js',
+  './canvaskit/wimp.wasm',
+
+  './canvaskit/chromium/canvaskit.js',
+  './canvaskit/chromium/canvaskit.wasm',
+
+  './canvaskit/experimental_webparagraph/canvaskit.js',
+  './canvaskit/experimental_webparagraph/canvaskit.wasm',
 ];
 
 self.addEventListener('install', (event) => {
@@ -45,44 +79,41 @@ self.addEventListener('fetch', (event) => {
 
   if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put('./index.html', copy);
-          });
-
-          return response;
-        })
-        .catch(() => caches.match('./index.html')),
+      caches.match('./index.html').then((cached) => {
+        return (
+          cached ||
+          fetch(event.request)
+        );
+      }),
     );
 
     return;
   }
 
   event.respondWith(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cached = await cache.match(event.request);
-
+    caches.match(event.request).then((cached) => {
       if (cached) {
         return cached;
       }
 
-      try {
-        const response = await fetch(event.request);
+      return fetch(event.request)
+        .then((response) => {
+          if (
+            response &&
+            response.status === 200
+          ) {
+            const copy = response.clone();
 
-        if (response && response.status === 200) {
-          cache.put(
-            event.request,
-            response.clone(),
-          );
-        }
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(
+                event.request,
+                copy,
+              );
+            });
+          }
 
-        return response;
-      } catch (error) {
-        return cached;
-      }
+          return response;
+        });
     }),
   );
 });

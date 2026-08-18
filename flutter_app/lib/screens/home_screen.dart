@@ -464,7 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Version 1.1',
+          'Version 1.2',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             color: colorScheme.primary,
             fontWeight: FontWeight.bold,
@@ -509,13 +509,6 @@ class _HomeScreenState extends State<HomeScreen> {
           onPressed: widget.onSignOut,
           icon: const Icon(Icons.logout),
           label: const Text('SIGN OUT'),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Field review build',
-          style: Theme.of(
-            context,
-          ).textTheme.bodySmall?.copyWith(color: Colors.white60),
         ),
       ],
     );

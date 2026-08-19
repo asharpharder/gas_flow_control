@@ -1,0 +1,129 @@
+Gas Flow Control - Management Summary
+Andrew Sharp
+08/18/2026
+1. Project Overview
+The Gas Flow Control project is a wireless control platform intended to simplify argon-flow management during welding operations.
+The software portion is substantially complete and currently includes:
+ 
+•	Secure sign-in using employee email and 6-digit PIN
+•	Six independent controller/tool positions
+•	Remote valve-position control
+•	Individual valve close
+•	Close All Valves
+•	System status monitoring
+•	Command history
+•	Offline Demo Mode
+•	iPhone Home Screen installation
+•	Raspberry Pi communication
+ 
+The remaining work is primarily physical hardware integration, calibration, and field validation.
+ 
+
+2. Practical Application
+The system is intended to allow an authorized welder or field user to control argon flow remotely from a phone or web interface.
+Potential benefits include:
+•	Reducing the need for a second person to remain at the gas-control location only to make adjustments
+•	Giving the operator direct access to valve position and shutdown controls
+•	Providing clear identification of each controller/tool
+•	Supporting future pressure and flow monitoring
+•	Allowing expansion from one prototype valve to multiple welding stations
+
+The recommended next step is to prove one complete physical valve-control channel before expanding to the full six-controller system.
+
+3. Recommended One-Valve Hardware
+Enfield Technologies PFV Proportional Solenoid Valve
+Recommended configuration:
+•	24 VDC
+•	0-10 V control signal
+•	Normally closed
+•	Proportional flow control
+•	Stainless construction where appropriate
+•	Integrated actuator and onboard driver
+This configuration is preferred because it does not require a separate stepper motor, separate actuator, or external stepper driver.
+Raspberry Pi Industrial I/O
+Sequent Microsystems SM-I-001 Industrial Automation HAT
+Purpose:
+•	Converts Raspberry Pi commands into 0-10 V industrial control signals
+•	Provides analog inputs for future pressure and flow sensors
+•	Supports future expansion
+________________________________________
+4. Estimated One-Valve Prototype Cost
+Item	Estimated Cost
+Raspberry Pi 4 Model B	Already owned
+Sequent SM-I-001 Industrial Automation HAT	~$120
+Enfield PFV proportional valve	~$250-$275
+24 VDC DIN-rail power supply	~$20-$30
+DIN rail, terminals, fuse protection	~$30-$60
+Control wire, ferrules, labels, misc. wiring	~$20-$40
+Prototype enclosure/mounting hardware	~$25-$50
+Estimated total	~$465-$575
+Recommended Initial Budget
+Approximately $500-$600
+This estimate does not include:
+•	Argon flow sensor
+•	Pressure transducer
+•	Final gas tubing/fittings
+•	Filter
+•	Shipping/tax
+These items should be selected only after the field requirements are confirmed.
+________________________________________
+5. Questions That Still Need to Be Answered
+Before ordering the exact valve, pressure sensor, and flow sensor, the field team needs to confirm:
+•	What is the normal argon flow rate in CFH?
+•	What is the minimum argon flow required?
+•	What is the maximum argon flow required?
+•	What is the regulated pressure entering the control valve in PSI?
+•	What regulator/flowmeter is currently being used?
+•	What tubing/fitting size is currently used?
+•	Where will the controller and valve be physically mounted?
+•	Will the equipment be exposed to dust, moisture, heat, grinding debris, or impact?
+•	What should the valve do if power is lost?
+•	What manual gas-isolation method will remain available?
+These answers will determine the exact valve orifice, sensor ranges, fittings, and final enclosure requirements.
+________________________________________
+6. Items Not Needed for the First Prototype
+Using the Enfield PFV with onboard driver means the following are not required for the first prototype:
+•	Separate stepper motor
+•	NEMA 17 motor
+•	A4988 or DRV8825 driver
+•	Enfield D5 stepper driver
+•	Separate actuator
+•	Second Raspberry Pi
+•	Six valves
+•	Six complete controller assemblies
+•	Additional UI development
+The goal is to validate one channel first, then scale only after successful testing.
+________________________________________
+7. First Prototype Goal
+The first physical milestone is:
+Gas Flow Control App
+→ Raspberry Pi
+→ Industrial 0-10 V I/O
+→ Enfield PFV Valve
+→ Physical valve response
+Initial electrical verification:
+•	0% command ≈ 0.0 V
+•	25% command ≈ 2.5 V
+•	50% command ≈ 5.0 V
+•	75% command ≈ 7.5 V
+•	100% command ≈ 10.0 V
+After this is verified, the next steps are:
+•	Add real pressure sensing
+•	Add real argon flow sensing
+•	Perform calibration
+•	Conduct controlled gas testing
+•	Begin field validation
+________________________________________
+8. Gas Flow Control Web App
+Live Application:
+https://gas-flow-control-demo.web.app
+The app can be opened in Safari and added directly to an iPhone Home Screen.
+The current Demo Mode can operate without an Internet connection after the application has been installed and cached.
+________________________________________
+9. Management Recommendation
+Proceed with a single-valve prototype before committing to a full six-valve system.
+Recommended Initial Approval
+$500-$600
+This amount is enough to prove the core electrical and valve-control concept while minimizing project cost and risk.
+The exact proportional valve configuration, pressure sensor, flow sensor, and gas-side fittings should be finalized only after the remaining field pressure and CFH requirements are confirmed.
+

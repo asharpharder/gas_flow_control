@@ -1,0 +1,68 @@
+Gas Flow Control - Operator Quick Guide
+Release: v1.2
+Web App: https://gas-flow-control-demo.web.app
+ 
+
+Sign In
+Use:
+•	Authorized Harder employee email
+•	Current 6-digit PIN
+Only authorized personnel should have access.
+Home Screen
+The Home screen shows the overall system condition:
+•	NORMAL - System operating normally
+•	ADJUSTING - Valve moving to commanded position
+•	WARNING - Condition requires attention
+•	FAULT - Hardware/controller problem detected
+•	OFFLINE / CONNECTION LOST - Controller communication unavailable
+From Home, the operator can open:
+•	Controls
+•	Command History
+•	Sign Out
+
+
+
+Controls
+Each controller/tool can display:
+•	Tool number/name
+•	Valve position
+•	Gas flow
+•	Pressure
+•	Operating status
+To adjust a valve:
+1.	Select the correct tool.
+2.	Enter the requested valve position.
+3.	Confirm the command.
+4.	Verify the displayed response.
+0% = Closed
+Valve Shutdown
+Close Valve
+Commands the selected valve to 0%.
+Close All Valves
+Commands all configured valves to 0%.
+Always verify the displayed system response after issuing a shutdown command.
+
+
+
+
+Command History
+The History screen provides a record of recent valve commands, including tool, requested position, shutdown commands, and command results.
+Offline Demo Mode
+Demo Mode allows the interface to operate without Internet or physical valve hardware.
+It can be used to demonstrate:
+•	Login
+•	Controls
+•	Valve-position changes
+•	Close Valve
+•	Close All
+•	Status behavior
+•	Command History
+Demo Mode does not control physical gas hardware.
+Operator Reminders
+•	Confirm the correct controller before sending a command.
+•	Only operate controllers assigned to your work.
+•	Do not rely on the app as the only means of physically isolating gas.
+•	Continue to follow required manual shutoff and site safety procedures.
+•	If the app reports FAULT, OFFLINE, or CONNECTION LOST, verify system condition before continuing.
+•	Sign out when finished.
+

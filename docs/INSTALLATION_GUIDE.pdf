@@ -1,0 +1,169 @@
+Gas Flow Control - Installation Guide
+Project: Gas Flow Control
+Release: v1.2
+Prepared by: Andrew Sharp
+Platform: Flutter Web App + Raspberry Pi 4 Controller 
+1. Purpose
+This guide explains how to access, install, and launch the Gas Flow Control application for review, demonstration, and future controller integration.
+The application currently supports:
+•	Secure sign-in
+•	Six controller/tool positions
+•	Valve-position controls
+•	Individual valve close
+•	Close All Valves
+•	System status monitoring
+•	Command history
+•	Offline Demo Mode
+•	Raspberry Pi controller communication
+•	iPhone Home Screen installation
+2. Web Application
+The live application is available at:
+https://gas-flow-control-demo.web.app
+The web version can be opened from any modern browser.
+For iPhone use, Safari is recommended.
+3. Install on iPhone Home Screen
+Initial Installation
+1.	Connect the iPhone to the Internet.
+2.	Open Safari.
+3.	Navigate to:
+https://gas-flow-control-demo.web.app
+4.	Allow the application to fully load.
+5.	Sign in once.
+6.	Open the Home, Controls, and History screens once.
+7.	Tap the Safari Share button.
+8.	Select Add to Home Screen.
+9.	Confirm the name:
+Gas Flow Control
+10.	Tap Add.
+A Gas Flow Control icon should now appear on the iPhone Home Screen.
+4. Offline Demo Mode
+After the app has been loaded and installed once while online, Demo Mode can run without Internet access.
+Offline Test
+1.	Launch the app once while connected to the Internet.
+2.	Close the app.
+3.	Enable Airplane Mode.
+4.	Confirm Wi-Fi and cellular data are unavailable.
+5.	Launch Gas Flow Control from the Home Screen icon.
+6.	Sign in.
+7.	Open:
+o	Home
+o	Controls
+o	History
+The application should remain functional in Demo Mode.
+5. Sign-In
+The application uses:
+•	Harder employee email
+•	6-digit PIN
+The accepted email domain and PIN are configured during the Flutter build process.
+Example build configuration:
+--dart-define=ACCESS_PIN=123456
+--dart-define=HARDER_EMAIL_DOMAIN=harder.com
+For production deployment, the current local PIN system should eventually be replaced with a centralized authentication system.
+6. Demo Mode
+Demo Mode is used when no physical controller is connected.
+Demo Mode allows the operator to test:
+•	Login
+•	Home screen
+•	Tool controls
+•	Valve-position changes
+•	Individual valve close
+•	Close All Valves
+•	Status behavior
+•	Command history
+•	Offline operation
+Demo Mode does not operate physical gas-control hardware.
+7. Raspberry Pi Controller Mode
+Future field operation is intended to use a local wireless connection between the app and the Raspberry Pi controller.
+Current controller architecture:
+Gas Flow Control App
+→ Local Network
+→ Raspberry Pi 4 Model B
+→ Gas Controller API
+→ Valve Hardware Interface
+→ Physical Valve Hardware
+Internet access is not required for local controller communication once the final local deployment configuration is complete.
+8. Raspberry Pi Controller Information
+Current Raspberry Pi hostname:
+GasControlPi
+Current controller API port:
+9000
+Controller service:
+gas-controller.service
+The service is configured to start automatically when the Raspberry Pi boots.
+9. Verify Raspberry Pi Controller
+Connect to the Raspberry Pi over SSH:
+ssh harderocotillo@PI_IP_ADDRESS
+Check controller status:
+sudo systemctl status gas-controller
+Expected result:
+Loaded: loaded (... enabled ...)
+Active: active (running)
+Exit the status viewer with:
+q
+10. Controller Health Check
+From a computer on the same local network:
+Invoke-RestMethod http://PI_IP_ADDRESS:9000/health
+Expected response should include:
+ok          : True
+controller  : GasControlPi
+hardware    : simulated-valve
+tool_count  : 6
+11. Source Code
+The project source is stored in GitHub.
+Repository:
+https://github.com/asharpharder/gas_flow_control
+Primary development branch:
+master
+Before making changes:
+git pull origin master
+After approved changes:
+git add .
+git commit -m "Describe change"
+git push origin master
+12. Web Deployment
+The web application is deployed using Firebase Hosting.
+Typical deployment workflow:
+cd gas_flow_control
+git pull origin master
+cd flutter_app
+flutter clean
+flutter pub get
+flutter analyze
+Build:
+flutter build web --no-web-resources-cdn --dart-define=DEMO_MODE=true --dart-define=OPERATOR_ID=field-review --dart-define=ACCESS_PIN=YOUR_PIN --dart-define=HARDER_EMAIL_DOMAIN=YOUR_DOMAIN
+Then deploy:
+cd ..
+firebase.cmd deploy --only hosting
+13. Release Verification
+Before considering a release complete, verify:
+•	Correct email + PIN signs in
+•	Incorrect email is rejected
+•	Incorrect PIN is rejected
+•	Home screen loads
+•	Controls screen loads
+•	History screen loads
+•	Valve commands work in Demo Mode
+•	Individual Close Valve works
+•	Close All Valves works
+•	Sign Out returns to login
+•	Offline iPhone launch works
+•	Text and icons remain visible offline
+•	Raspberry Pi controller responds on the local network
+•	Git branch is clean
+Expected Git status:
+nothing to commit, working tree clean
+14. Important Limitation
+The current software is functionally complete as a prototype platform.
+Physical production deployment still requires:
+•	Final valve selection
+•	Flow sensor selection
+•	Pressure sensor selection
+•	Argon CFH requirements
+•	Regulated PSI requirements
+•	Electrical integration
+•	Calibration
+•	Controlled gas testing
+•	Field validation
+•	Safety review
+The application should not be considered a fully validated production gas-control system until those physical testing steps are complete.
+

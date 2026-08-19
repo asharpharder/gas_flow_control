@@ -1,0 +1,209 @@
+Gas Flow Control - Technical Handoff
+Project: Gas Flow Control
+Release: v1.2
+Prepared by: Andrew Sharp
+Status: Software-complete prototype; physical valve/sensor integration pending 
+1. Current Project Status
+The Gas Flow Control software platform is substantially complete and ready for handoff.
+Completed and tested:
+•	Flutter user interface
+•	Secure sign-in using employee email and 6-digit PIN
+•	Six independent controller/tool positions
+•	Remote valve-position commands
+•	Individual valve close
+•	Close All Valves
+•	Home/system-status screen
+•	Command history
+•	NORMAL, ADJUSTING, WARNING, FAULT, and OFFLINE states
+•	Offline Demo Mode
+•	iPhone Home Screen installation
+•	Firebase web deployment
+•	Raspberry Pi 4 controller integration
+•	Raspberry Pi automatic controller startup
+•	Connection-loss and recovery behavior
+•	Hardware abstraction layer for future real valve control
+The remaining work is primarily physical hardware integration, calibration, and field validation.
+2. Current System Architecture
+Software / Control Path
+Gas Flow Control App
+→ FastAPI backend
+→ Raspberry Pi 4 Model B
+→ Gas Controller API
+→ Valve Hardware Interface
+→ Physical valve hardware
+The current Raspberry Pi hardware layer is simulated so the rest of the system can be tested without a physical valve.
+3. Raspberry Pi Controller
+Current controller hostname:
+GasControlPi
+Controller API port:
+9000
+Linux service:
+gas-controller.service
+The service is configured with systemd and starts automatically when the Raspberry Pi boots.
+Check controller status:
+sudo systemctl status gas-controller
+Expected result:
+Loaded: loaded (... enabled ...)
+Active: active (running)
+Controller health can be checked from another device on the same network:
+Invoke-RestMethod http://PI_IP_ADDRESS:9000/health
+Expected response includes:
+ok          : True
+controller  : GasControlPi
+hardware    : simulated-valve
+tool_count  : 6
+4. Raspberry Pi Software Structure
+The Raspberry Pi controller currently uses:
+controller.py
+valve_hardware.py
+controller.py provides the network/API layer.
+valve_hardware.py separates valve hardware behavior from the API.
+Current implementation:
+SimulatedValveHardware
+Future implementation should replace this with a physical hardware driver, for example:
+EnfieldValveHardware
+The goal is to replace only the hardware layer without redesigning:
+•	Flutter UI
+•	Main API
+•	Raspberry Pi controller routes
+•	Tool/status models
+5. Recommended Physical Hardware Direction
+Current preferred one-valve architecture:
+Raspberry Pi 4
+→ Sequent Microsystems SM-I-001 Industrial Automation HAT
+→ 0-10 V command
+→ Enfield PFV Proportional Solenoid Valve with onboard linear driver
+This approach avoids a separate stepper motor and stepper driver.
+Preferred valve characteristics:
+•	24 VDC
+•	0-10 V command
+•	Normally closed
+•	Proportional control
+•	Stainless construction where appropriate
+•	Integrated actuator/driver
+6. Information Required Before Final Hardware Selection
+Before ordering the exact valve, pressure sensor, and flow sensor, confirm:
+•	Normal argon flow in CFH
+•	Minimum argon flow
+•	Maximum argon flow
+•	Regulated pressure entering the valve in PSI
+•	Existing regulator/flowmeter model
+•	Existing tubing/fitting sizes
+•	Installation environment
+•	Required behavior during power loss
+•	Required manual gas isolation method
+These values determine the exact valve orifice, calibration pressure, sensor ranges, and gas-side fittings.
+7. Recommended First Physical Test
+Do not begin with gas.
+First prove the control signal:
+App
+→ Raspberry Pi
+→ Sequent I/O
+→ Digital Multimeter
+Expected output:
+•	0% ≈ 0.0 V
+•	25% ≈ 2.5 V
+•	50% ≈ 5.0 V
+•	75% ≈ 7.5 V
+•	100% ≈ 10.0 V
+After this passes:
+1.	Connect one proportional valve electrically.
+2.	Verify physical valve response without gas.
+3.	Test Close Valve.
+4.	Test Close All.
+5.	Test controller restart.
+6.	Test communication loss and recovery.
+7.	Add real pressure sensing.
+8.	Add real argon flow sensing.
+9.	Calibrate.
+10.	Proceed to controlled gas testing.
+8. Software Release / Web App
+Current live application:
+https://gas-flow-control-demo.web.app
+Current release:
+v1.2
+The app can be added to an iPhone Home Screen.
+Demo Mode has been tested for offline operation after the app is first installed and cached.
+
+
+
+
+9. Source Code / Version Control
+Repository:
+https://github.com/asharpharder/gas_flow_control
+Primary branch:
+master
+Typical update workflow:
+git pull origin master
+After approved changes:
+git add .
+git commit -m "Describe change"
+git push origin master
+Before handoff or release:
+git status
+Desired result:
+nothing to commit, working tree clean
+10. Flutter Web Build / Deployment
+Typical release build:
+cd flutter_app
+flutter clean
+flutter pub get
+flutter analyze
+Build web app:
+flutter build web --no-web-resources-cdn --dart-define=DEMO_MODE=true --dart-define=OPERATOR_ID=field-review --dart-define=ACCESS_PIN=YOUR_PIN --dart-define=HARDER_EMAIL_DOMAIN=YOUR_DOMAIN
+Deploy through Firebase:
+cd ..
+firebase.cmd deploy --only hosting
+11. Authentication
+Current prototype access control uses:
+•	Employee email domain validation
+•	Configurable 6-digit PIN
+The PIN and email domain are supplied at build time using --dart-define.
+This is appropriate for prototype/review access but should be replaced with centralized authentication before a production deployment.
+12. Current Limitations
+The software is ready for physical hardware integration, but the overall gas-control system is not yet production validated.
+Still required:
+•	Final valve selection
+•	Final pressure sensor selection
+•	Final flow sensor selection
+•	Electrical integration
+•	Calibration
+•	Gas compatibility verification
+•	Pressure-rating verification
+•	Controlled gas testing
+•	Fail-safe validation
+•	Field trials
+•	Safety/engineering review
+
+
+
+
+13. Recommended Continuation Plan
+Phase 1 - One-Valve Electrical Prototype
+•	Install industrial I/O HAT
+•	Verify 0-10 V commands
+•	Connect one proportional valve
+•	Implement physical valve driver
+•	Validate movement and shutdown behavior
+Phase 2 - Sensor Integration
+•	Add pressure transducer
+•	Add argon flow sensor
+•	Convert sensor signals into PSI and CFH
+•	Integrate readings into existing telemetry
+Phase 3 - Bench Validation
+•	Calibrate valve position/flow relationship
+•	Establish warning/fault thresholds
+•	Test network and hardware failures
+•	Perform controlled argon testing
+Phase 4 - Field Pilot
+•	Install one validated controller
+•	Gather operator feedback
+•	Verify reliability
+•	Expand only after successful testing
+14. Handoff Recommendation
+The software should remain feature-frozen unless testing identifies a specific operational need.
+The next engineering effort should focus on:
+physical valve control, sensor integration, calibration, and field validation
+rather than additional UI development.
+The system has been intentionally structured so that future hardware can be added beneath the existing Raspberry Pi hardware interface without rewriting the completed user interface or network architecture.
+

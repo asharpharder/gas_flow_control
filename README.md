@@ -53,49 +53,29 @@ The current software release includes:
 
 ## System Architecture
 
-Current development architecture:
+Current field-ready architecture:
 
-```text
-Flutter Application
+iPhone / Browser
         |
         v
-FastAPI Backend
+Local Wi-Fi
         |
         v
-Raspberry Pi 4
-        |
-        v
-Gas Controller API
-        |
-        v
-Valve Hardware Interface
-        |
-        v
-Simulated Valve Hardware
-```
+GasControlPi
+   |           |
+   |           |
+   v           v
+Main Backend   Gas Controller
+Port 8000      Port 9000
+   |              |
+   +-------> remote_pi
+                  |
+                  v
+        Valve Hardware Interface
+                  |
+                  v
+        Future Physical Valve/Sensors
 
-Future physical architecture:
-
-```text
-Flutter Application
-        |
-        v
-Local Network
-        |
-        v
-Raspberry Pi 4
-        |
-        v
-Industrial Analog I/O
-        |
-        v
-Proportional Valve
-        |
-        v
-Pressure / Flow Sensors
-```
-
-The software has been intentionally separated into layers so the simulated valve implementation can later be replaced with physical hardware without redesigning the app.
 
 ---
 
@@ -175,6 +155,22 @@ controller  : GasControlPi
 hardware    : simulated-valve
 tool_count  : 6
 ```
+
+---
+
+## Self-Contained Raspberry Pi Deployment
+
+The Raspberry Pi now hosts both required backend services:
+
+- `gas-backend.service` on port `8000`
+- `gas-controller.service` on port `9000`
+
+Both services are configured with `systemd` and start automatically when the Raspberry Pi boots.
+
+The main backend runs in:
+
+```text
+remote_pi
 
 ---
 
